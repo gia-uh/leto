@@ -12,3 +12,12 @@ services:
       - ../:/src
     working_dir: "/src"
     command: ["streamlit", "run", "leto.py"]
+
+  neo4j:
+    image: neo4j
+    container_name: neo4j
+
+  mongo:
+    image: mongo
+    container_name: mongo
+    
