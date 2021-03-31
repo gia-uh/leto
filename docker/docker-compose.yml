@@ -1,0 +1,14 @@
+version: "3"
+
+services:
+  leto:
+    image: leto/leto:latest
+    container_name: leto
+    build: .
+    ports:
+      - 8501:8501
+    volumes:
+      - ../leto:/usr/local/lib/python3.8/site-packages/leto
+      - ../:/src
+    working_dir: "/src"
+    command: ["streamlit", "run", "leto.py"]

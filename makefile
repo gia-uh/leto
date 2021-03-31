@@ -1,5 +1,5 @@
 app:
-	docker-compose -f build/docker-compose.yml up
+	docker-compose -f docker/docker-compose.yml up
 
 image:
-	docker-compose -f build/docker-compose.yml build
+	docker-compose -f docker/docker-compose.yml build
