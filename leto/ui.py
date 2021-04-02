@@ -1,9 +1,14 @@
 import streamlit as st
+
 from .loaders import get_loaders
 from .storage import DummyStorage
+from .query import DummyQueryResolver
+from .visualization import DummyVisualizer
 
 
 storage = DummyStorage()
+resolver = DummyQueryResolver()
+visualizer = DummyVisualizer()
 
 
 def bootstrap():
@@ -19,7 +24,9 @@ def bootstrap():
             st.write(f"Current size: {storage.size} tuples")
 
     with main:
-        query = st.text_input("🔮 Enter a query for LETO")
+        query_text = st.text_input("🔮 Enter a query for LETO")
+        response = resolver.query(query_text, storage)
+        visualizer.visualize(query_text, response)
 
 
 def load_data():

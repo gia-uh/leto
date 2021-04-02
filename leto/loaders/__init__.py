@@ -14,5 +14,3 @@ def get_loaders():
     for cls in locals().values():
         if inspect.isclass(cls) and issubclass(cls, Loader) and cls != Loader:
             yield cls
-
-
