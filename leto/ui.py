@@ -42,6 +42,7 @@ def load_data():
 def _build_cls(cls):
     import typing
     import enum
+    import io
 
     init_args = typing.get_type_hints(cls.__init__)
     init_values = {}
@@ -54,5 +55,7 @@ def _build_cls(cls):
         elif issubclass(v, enum.Enum):
             values = { e.name: e.value for e in v }
             init_values[k] = values[st.selectbox(k, list(values))]
+        elif v == io.BytesIO:
+            init_values[k] = st.file_uploader(k)
 
     return cls(**init_values)

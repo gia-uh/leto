@@ -1,5 +1,6 @@
 import spacy
 import os
+import io
 from textacy.extract import subject_verb_object_triples
 
 import enum
@@ -12,7 +13,7 @@ class Language(str, enum.Enum):
     en = "en_core_web_sm"
 
 
-class SVOLoader(Loader):
+class SVOFromText(Loader):
     def __init__(self, text:str, language:Language) -> None:
         self.text = text
         self.language = language
@@ -23,7 +24,19 @@ class SVOLoader(Loader):
         for subj, verb, obj in get_svo_tripplets(nlp, self.text):
             yield ( "_".join(s.text for s in subj), "_".join(s.text for s in verb), "_".join(s.text for s in obj) )
             
-        
+
+class SVOFromFile(Loader):
+    def __init__(self, file:io.BytesIO, language:Language) -> None:
+        self.file = file
+        self.language = language
+
+    def load(self):
+        nlp = get_model(self.language)
+    
+        for line in self.file.readlines():
+            for subj, verb, obj in get_svo_tripplets(nlp, line.decode("utf8")):
+                yield ( "_".join(s.text for s in subj), "_".join(s.text for s in verb), "_".join(s.text for s in obj) )
+            
 
 data_directory = "/src/data/models"
                                    
