@@ -41,11 +41,18 @@ def load_data():
 
 def _build_cls(cls):
     import typing
+    import enum
+
     init_args = typing.get_type_hints(cls.__init__)
     init_values = {}
 
     for k, v in init_args.items():
         if v == int:
             init_values[k] = st.number_input(k, value=0)
+        elif v == str:
+            init_values[k] = st.text_area(k, value="")
+        elif issubclass(v, enum.Enum):
+            values = { e.name: e.value for e in v }
+            init_values[k] = values[st.selectbox(k, list(values))]
 
     return cls(**init_values)

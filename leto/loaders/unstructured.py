@@ -1,6 +1,29 @@
 import spacy
 import os
-import textacy
+from textacy.extract import subject_verb_object_triples
+
+import enum
+
+from ..loaders import Loader
+
+
+class Language(str, enum.Enum):
+    es = "es_core_news_sm"
+    en = "en_core_web_sm"
+
+
+class SVOLoader(Loader):
+    def __init__(self, text:str, language:Language) -> None:
+        self.text = text
+        self.language = language
+
+    def load(self):
+        nlp = get_model(self.language)
+    
+        for subj, verb, obj in get_svo_tripplets(nlp, self.text):
+            yield ( "_".join(s.text for s in subj), "_".join(s.text for s in verb), "_".join(s.text for s in obj) )
+            
+        
 
 data_directory = "/src/data/models"
                                    
@@ -77,7 +100,7 @@ def get_svo_tripplets(nlp: spacy.Language, text:str):
         SVO triples Generator: Sunject - verb - object triples generator
     """    
     doc = nlp(text)
-    return textacy.extract.subject_verb_object_triples(doc)
+    return subject_verb_object_triples(doc)
     
 
 """
