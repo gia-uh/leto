@@ -4,6 +4,8 @@ from .loaders import get_loaders
 from .storage import DummyStorage
 from .query import DummyQueryResolver
 from .visualization import DummyVisualizer
+from .loaders.structured import CsvLoader
+from io import StringIO
 
 
 storage = DummyStorage()
@@ -19,7 +21,7 @@ def bootstrap():
     with side:
         with st.beta_expander("🔥 Load new data", False):
             load_data()
-        
+
         with st.beta_expander("💾 Data storage info", True):
             st.write(f"Current size: {storage.size} tuples")
 
@@ -41,11 +43,14 @@ def load_data():
 
 def _build_cls(cls):
     import typing
+
     init_args = typing.get_type_hints(cls.__init__)
     init_values = {}
 
     for k, v in init_args.items():
         if v == int:
             init_values[k] = st.number_input(k, value=0)
+        if v == StringIO:
+            init_values[k] = st.file_uploader(k, accept_multiple_files=False)
 
     return cls(**init_values)

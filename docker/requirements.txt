@@ -8,3 +8,4 @@ PyYAML==5.3.1
 scikit_learn==0.23.1
 scipy==1.4.1
 streamlit==0.74.1
+fuzzywuzzy==0.18.0
