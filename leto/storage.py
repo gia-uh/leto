@@ -27,12 +27,12 @@ class DummyStorage(Storage):
         return len(self.storage)
 
     def _save(self):
-        with open("storage.pickle", "wb") as fp:
+        with open("/src/data/storage.pickle", "wb") as fp:
             pickle.dump(self.storage, fp)
 
     def _load(self):
-        if not pathlib.Path("storage.pickle").exists():
+        if not pathlib.Path("/src/data/storage.pickle").exists():
             return
 
-        with open("storage.pickle", "rb") as fp:
+        with open("/src/data/storage.pickle", "rb") as fp:
             self.storage = pickle.load(fp)
