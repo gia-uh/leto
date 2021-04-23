@@ -2,16 +2,8 @@ import spacy
 import os
 import textacy
 
-script_directory = os.path.dirname(os.path.realpath(__file__))
-data_directory = os.path.join(script_directory, "data")
-models_directory = os.path.join(script_directory, "models")
+data_directory = "/src/data/models"
                                    
-def make_data_dir():
-    try:
-        os.mkdir(data_directory)
-    except OSError as error:
-        pass
-    
 def get_model(name:str)-> spacy.Language:
     """Get an spacy language model from different sources. First, tryes to load
     the model from disk, if fails, then load and install from original repo.
@@ -95,4 +87,3 @@ nlp = get_model("en_core_web_sm")
 for triplet in get_svo_tripplets(nlp, "The user knows nothing, and yet, owns a lot. The sister does not like cookies"):
     print(triplet)
 """
-    
