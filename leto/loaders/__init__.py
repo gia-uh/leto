@@ -9,6 +9,7 @@ class Loader(abc.ABC):
 
 
 def get_loaders():
+    from .unstructured import SVOFromFile, SVOFromText
     from .dummy import DummyLoader
     from .structured import CsvLoader
 

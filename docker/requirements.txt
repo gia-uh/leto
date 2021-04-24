@@ -9,3 +9,5 @@ scikit_learn==0.23.1
 scipy==1.4.1
 streamlit==0.74.1
 fuzzywuzzy==0.18.0
+spacy==3.0.5
+textacy==0.11.0
