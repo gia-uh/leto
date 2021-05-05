@@ -2,17 +2,13 @@ from ..loaders import Loader
 import pandas as pd
 import numpy as np
 from fuzzywuzzy import process
-from io import StringIO
+from io import BytesIO
 
 
 class CsvLoader(Loader):
-    def __init__(self, path: StringIO) -> None:
+    def __init__(self, path: BytesIO) -> None:
         self.path = path
-        self.df = pd.read_csv(path)
-        self.col = self.df.columns
-        self.index = None
-        self.infer_index()
-        # self.corr=self.df.select_dtypes(include=np.number).corr()
+        
 
     def infer_index(self):
         """infer an index column using uniqueness and text similarity to 'ID' and 'name'"""
@@ -34,6 +30,13 @@ class CsvLoader(Loader):
         yields all columns,'is_a',column type
         yields entity with properties,'is_a', index column
         """
+
+        self.df = pd.read_csv(self.path)
+        self.col = self.df.columns
+        self.index = None
+        self.infer_index()
+        # self.corr=self.df.select_dtypes(include=np.number).corr()
+
         for col in self.cand:
             yield ({"id": self.index}, {"id": "same_as"}, {"id": col})
 
