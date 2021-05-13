@@ -2,7 +2,7 @@ import streamlit as st
 
 from .loaders import get_loaders
 from .storage import Storage, get_storages
-from .query import QueryResolver
+from .query import QueryParser, QueryResolver, get_parsers
 from .visualization import DummyVisualizer, Visualizer
 from io import StringIO
 
@@ -10,9 +10,8 @@ from io import StringIO
 def bootstrap():
     st.title("🧠 LETO: Learning Engine Through Ontologies")
 
-    storages = { cls.__name__:cls for cls in get_storages() }
-
     with st.sidebar:
+        storages = { cls.__name__:cls for cls in get_storages() }
         st.markdown("## 💾 Data storage info")
         storage_cls = storages[st.selectbox("Storage driver", list(storages))]
 
@@ -29,12 +28,26 @@ def bootstrap():
     with st.sidebar:
         st.write(f"Current size: {storage.size} tuples")
 
+    with st.sidebar:
+        parsers = { cls.__name__:cls for cls in get_parsers() }
+        st.markdown("## 🧙‍♂️ Query parsing")
+        parser_cls = parsers[st.selectbox("Query parser", list(parsers))]
+
+    parser: QueryParser = parser_cls()
+
     with main:
         query_text = st.text_input("🔮 Enter a query for LETO")
 
         if query_text:
+            query = parser.parse(query_text)
+
+            st.write("#### Interpreting query as:")
+            st.code(query)
+
             response = resolver.query(query_text)
-            visualizer.visualize(query_text, response)
+
+            st.write("#### Response:")
+            visualizer.visualize(query, response)
 
 
 def load_data(storage):
