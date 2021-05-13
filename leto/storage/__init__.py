@@ -4,7 +4,7 @@ from typing import List
 
 class Storage(abc.ABC):
     @abc.abstractmethod
-    def store_tuple(self, entity_from, relation, entity_to):
+    def store(self, relation):
         pass
 
     @abc.abstractproperty

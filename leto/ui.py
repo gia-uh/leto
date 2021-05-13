@@ -43,8 +43,8 @@ def load_data(storage):
     loader = _build_cls(loader_cls)
 
     if st.button("🚀 Run"):
-        for tuple in loader.load():
-            storage.store_tuple(*tuple)
+        for relation in loader.load():
+            storage.store(relation)
 
 
 def _build_cls(cls):

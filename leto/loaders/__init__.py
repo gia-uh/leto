@@ -1,10 +1,11 @@
 import abc
-from typing import List
+from typing import Iterable, List
+from leto.model import Relation
 
 
 class Loader(abc.ABC):
     @abc.abstractmethod
-    def load(self):
+    def load(self) -> Iterable[Relation]:
         pass
 
 

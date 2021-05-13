@@ -1,5 +1,7 @@
+from leto.model import Relation
 import pickle
 import pathlib
+from typing import AbstractSet
 
 
 from leto.storage import Storage
@@ -7,11 +9,11 @@ from leto.storage import Storage
 
 class DummyStorage(Storage):
     def __init__(self) -> None:
-        self.storage = set()
+        self.storage: AbstractSet[Relation] = set()
         self._load()
 
-    def store_tuple(self, entity_from, relation, entity_to):
-        self.storage.add((entity_from, relation, entity_to))
+    def store(self, relation):
+        self.storage.add(relation)
         self._save()
 
     @property

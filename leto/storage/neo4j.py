@@ -1,6 +1,9 @@
+from leto.model import Entity, Relation
 import os
 from neo4j import GraphDatabase, basic_auth, Session
 from neo4j.exceptions import ServiceUnavailable
+
+from leto.storage import Storage
 
 
 username = os.getenv("NEO4J_USER", "neo4j")
@@ -11,7 +14,7 @@ port = os.getenv("PORT", 7687)
 url = os.getenv("NEO4J_URI", f"bolt://neo4j:{port}")
 
 
-class GraphStorage:
+class GraphStorage(Storage):
     """
     GraphStorage:
         class for handling operations concerning neo4j database. It wraps main functions as
@@ -36,29 +39,30 @@ class GraphStorage:
         with self.driver.session() as session:
             return session.read_transaction(self._get_size)
 
-    def create_entity(self, name:str, entity_type:str, source:str, **args):
+    def store(self, relation: Relation):
+        self.create_entity(relation.entity_from)
+        self.create_entity(relation.entity_to)
+        self.create_relationship(relation)
+
+    def create_entity(self, entity: Entity):
         with self.driver.session() as session:
-            result = session.read_transaction(self._find_node_by, "Entity", name = name)
-            if (len(result) > 0):
-                session.close()
-                print(f"matched Entity {result[0]}")
+            result = session.read_transaction(self._find_node_by, entity.type, name=entity.name)
+
+            if len(result) > 0:
+                print(f"Matched Entity {result[0]}")
                 return result[0]
 
-            args["name"] = name
-            args["type"] = entity_type
-            args["source"] = source
-            result = session.write_transaction(self._create_node, "Entity", **args)
-            session.close()
+            result = session.write_transaction(self._create_node, type=entity.type, name=entity.name)
             print(f"created Entity {result[0]}")
             return result[0]
 
-    def create_relationship(self, entity1_name:str, entity2_name:str, relationship_name:str, **args):
+    def create_relationship(self, relation:Relation):
         with self.driver.session() as session:
             # Write transactions allow the driver to handle retries and transient errors
-            result = session.write_transaction(self._create_relationship, relationship_name , "Entity", {"name":entity1_name} , "Entity", {"name":entity2_name}, **args)
-            # for record in result:
-            #     print("Created friendship between: {p1}, {p2}".format(
-            #         p1=record['p1'], p2=record['p2']))
+            result = session.write_transaction(self._create_relationship,
+                relation.label,
+                relation.entity_from.type, {"name":relation.entity_from.name} ,
+                relation.entity_to.type, {"name":relation.entity_to.name})
 
     def run_read_query(self, query:str):
         with self.driver.session() as session:
@@ -87,12 +91,11 @@ class GraphStorage:
         return [record["node"]._properties for record in result]
 
     @staticmethod
-    def _create_node(tx, node_type:str, properties:str = None, **args):
-        if (not properties):
-            properties = ", ".join([f'{arg[0]}:"{arg[1]}"' for arg in args.items()])
+    def _create_node(tx, type:str, **args):
+        properties = ", ".join([f'{arg[0]}:"{arg[1]}"' for arg in args.items()])
 
         query = (
-            f"CREATE (node:{node_type} {{{properties}}}) "
+            f"CREATE (node:{type} {{{properties}}}) "
             f"RETURN node"
         )
 
