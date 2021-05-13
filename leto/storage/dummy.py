@@ -1,3 +1,4 @@
+from leto.query import Query, QueryResolver
 from leto.model import Relation
 import pickle
 import pathlib
@@ -30,3 +31,18 @@ class DummyStorage(Storage):
 
         with open("/src/data/storage.pickle", "rb") as fp:
             self.storage = pickle.load(fp)
+
+    def get_query_resolver(self) -> QueryResolver:
+        return DummyQueryResolver(self)
+
+
+class DummyQueryResolver(QueryResolver):
+    def __init__(self, storage: DummyStorage) -> None:
+        self.storage = storage
+
+    def query(self, query: Query):
+        components = set(query.split())
+
+        for r in self.storage.storage:
+            if r.entity_from.name in components or r.label in components or r.entity_to.name in components:
+                yield r

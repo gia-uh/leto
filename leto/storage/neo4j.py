@@ -1,9 +1,11 @@
-from leto.model import Entity, Relation
 import os
-from neo4j import GraphDatabase, basic_auth, Session
-from neo4j.exceptions import ServiceUnavailable
+from typing import Iterable
 
+from leto.model import Entity, Relation
+from leto.query import Query, QueryResolver
 from leto.storage import Storage
+
+from neo4j import GraphDatabase, basic_auth
 
 
 username = os.getenv("NEO4J_USER", "neo4j")
@@ -125,6 +127,18 @@ class GraphStorage(Storage):
         p1 = [record["p1"]._properties for record in result]
         p2 = [record["p1"]._properties for record in result]
         return result
+
+    def get_query_resolver(self) -> QueryResolver:
+        return GraphQueryResolver(self)
+
+
+class GraphQueryResolver(QueryResolver):
+    def __init__(self, storage: GraphStorage) -> None:
+        self.storage = storage
+
+    def query(self, query: Query) -> Iterable[Relation]:
+        raise NotImplementedError()
+
 
 """
 Usage example:

@@ -1,9 +1,9 @@
 import streamlit as st
 
 from .loaders import get_loaders
-from .storage import get_storages
-from .query import DummyQueryResolver
-from .visualization import DummyVisualizer
+from .storage import Storage, get_storages
+from .query import QueryResolver
+from .visualization import DummyVisualizer, Visualizer
 from io import StringIO
 
 
@@ -16,9 +16,9 @@ def bootstrap():
         st.markdown("## 💾 Data storage info")
         storage_cls = storages[st.selectbox("Storage driver", list(storages))]
 
-    storage = storage_cls()
-    resolver = DummyQueryResolver()
-    visualizer = DummyVisualizer()
+    storage: Storage = storage_cls()
+    resolver: QueryResolver = storage.get_query_resolver()
+    visualizer: Visualizer = DummyVisualizer()
 
     main, side = st.beta_columns((2, 1))
 
@@ -33,7 +33,7 @@ def bootstrap():
         query_text = st.text_input("🔮 Enter a query for LETO")
 
         if query_text:
-            response = resolver.query(query_text, storage)
+            response = resolver.query(query_text)
             visualizer.visualize(query_text, response)
 
 

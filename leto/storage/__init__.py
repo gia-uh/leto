@@ -1,6 +1,8 @@
 import abc
 from typing import List
 
+from leto.query import QueryResolver
+
 
 class Storage(abc.ABC):
     @abc.abstractmethod
@@ -9,6 +11,10 @@ class Storage(abc.ABC):
 
     @abc.abstractproperty
     def size(self):
+        pass
+
+    @abc.abstractmethod
+    def get_query_resolver(self) -> QueryResolver:
         pass
 
 
