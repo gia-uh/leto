@@ -2,8 +2,8 @@ version: "3"
 
 services:
   leto:
-    image: letoai/leto-mvp:latest
-    container_name: leto-mvp
+    image: letoai/leto:latest
+    container_name: leto
     build: .
     ports:
       - 8501:8501

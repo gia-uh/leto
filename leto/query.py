@@ -1,5 +1,6 @@
 import abc
-from .storage import Storage, DummyStorage
+from .storage import Storage
+from .storage.dummy import DummyStorage
 
 
 class QueryResolver(abc.ABC):

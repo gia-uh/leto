@@ -1,37 +1,43 @@
 import streamlit as st
 
 from .loaders import get_loaders
-from .storage import DummyStorage
+from .storage import get_storages
 from .query import DummyQueryResolver
 from .visualization import DummyVisualizer
-from .loaders.structured import CsvLoader
 from io import StringIO
-
-
-storage = DummyStorage()
-resolver = DummyQueryResolver()
-visualizer = DummyVisualizer()
 
 
 def bootstrap():
     st.title("🧠 LETO: Learning Engine Through Ontologies")
 
+    storages = { cls.__name__:cls for cls in get_storages() }
+
+    with st.sidebar:
+        st.markdown("## 💾 Data storage info")
+        storage_cls = storages[st.selectbox("Storage driver", list(storages))]
+
+    storage = storage_cls()
+    resolver = DummyQueryResolver()
+    visualizer = DummyVisualizer()
+
     main, side = st.beta_columns((2, 1))
 
     with side:
         with st.beta_expander("🔥 Load new data", False):
-            load_data()
+            load_data(storage)
 
-        with st.beta_expander("💾 Data storage info", True):
-            st.write(f"Current size: {storage.size} tuples")
+    with st.sidebar:
+        st.write(f"Current size: {storage.size} tuples")
 
     with main:
         query_text = st.text_input("🔮 Enter a query for LETO")
-        response = resolver.query(query_text, storage)
-        visualizer.visualize(query_text, response)
+
+        if query_text:
+            response = resolver.query(query_text, storage)
+            visualizer.visualize(query_text, response)
 
 
-def load_data():
+def load_data(storage):
     loaders = {cls.__name__: cls for cls in get_loaders()}
     loader_cls = loaders[st.selectbox("Loader", list(loaders))]
     loader = _build_cls(loader_cls)

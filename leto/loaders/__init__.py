@@ -1,5 +1,5 @@
 import abc
-import inspect
+from typing import List
 
 
 class Loader(abc.ABC):
@@ -8,11 +8,9 @@ class Loader(abc.ABC):
         pass
 
 
-def get_loaders():
+def get_loaders() -> List[Loader]:
     from .unstructured import SVOFromFile, SVOFromText
     from .dummy import DummyLoader
     from .structured import CsvLoader
 
-    for cls in locals().values():
-        if inspect.isclass(cls) and issubclass(cls, Loader) and cls != Loader:
-            yield cls
+    return [DummyLoader, CsvLoader, SVOFromFile, SVOFromText]

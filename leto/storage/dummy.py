@@ -1,16 +1,8 @@
-import abc
 import pickle
 import pathlib
 
 
-class Storage(abc.ABC):
-    @abc.abstractmethod
-    def store_tuple(self, entity_from, relation, entity_to):
-        pass
-
-    @abc.abstractproperty
-    def size(self):
-        pass
+from leto.storage import Storage
 
 
 class DummyStorage(Storage):
