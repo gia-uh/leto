@@ -2,8 +2,8 @@ version: "3"
 
 services:
   leto:
-    image: leto/leto:latest
-    container_name: leto
+    image: letoai/leto-mvp:latest
+    container_name: leto-mvp
     build: .
     ports:
       - 8501:8501
@@ -22,8 +22,3 @@ services:
       - 7687:7687
     environment:
       - NEO4J_AUTH=neo4j/12345678
-
-
-  mongo:
-    image: mongo
-    container_name: mongo
