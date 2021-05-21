@@ -20,10 +20,10 @@ class SVOFromText(Loader):
 
     def load(self):
         nlp = get_model(self.language)
-    
+
         for subj, verb, obj in get_svo_tripplets(nlp, self.text):
             yield ( "_".join(s.text for s in subj), "_".join(s.text for s in verb), "_".join(s.text for s in obj) )
-            
+
 
 class SVOFromFile(Loader):
     def __init__(self, file:io.BytesIO, language:Language) -> None:
@@ -32,14 +32,14 @@ class SVOFromFile(Loader):
 
     def load(self):
         nlp = get_model(self.language)
-    
+
         for line in self.file.readlines():
             for subj, verb, obj in get_svo_tripplets(nlp, line.decode("utf8")):
                 yield ( "_".join(s.text for s in subj), "_".join(s.text for s in verb), "_".join(s.text for s in obj) )
-            
 
-data_directory = "/src/data/models"
-                                   
+
+data_directory = "/home/coder/leto/data/models"
+
 def get_model(name:str)-> spacy.Language:
     """Get an spacy language model from different sources. First, tryes to load
     the model from disk, if fails, then load and install from original repo.
@@ -52,7 +52,7 @@ def get_model(name:str)-> spacy.Language:
 
     Returns:
         spacy.Language: Language
-    """    
+    """
     try:
         model = get_local_model(name)
         if (not model):
@@ -60,7 +60,7 @@ def get_model(name:str)-> spacy.Language:
         return model
     except Exception as e:
         raise e
-    
+
 def get_local_model(name:str) -> spacy.Language:
     """Gets Language model and data from disk
 
@@ -69,7 +69,7 @@ def get_local_model(name:str) -> spacy.Language:
 
     Returns:
         spacy.Language | None: Preloaded language
-    """    
+    """
     try:
         return spacy.load(name).from_disk(os.path.join(data_directory, name))
     except:
@@ -81,7 +81,7 @@ def save_model(model: spacy.Language, name:str):
     Args:
         model (spacy.Language): Language model to save
         name (str): Name, identification for the language. If name is already in use will override saved data.
-    """    
+    """
     config = model.config
     model.to_disk(os.path.join(data_directory, name))
 
@@ -95,14 +95,14 @@ def get_online_model(name:str, save_to_local:bool = True, pythonNick:str = "pyth
 
     Returns:
         spacy.Language: Name, identification for the language.
-    """    
+    """
     os.system(f"{pythonNick} -m spacy download {name}")
     nlp = spacy.load(name)
     if (save_to_local):
         save_model(nlp, name)
     return nlp
 
-def get_svo_tripplets(nlp: spacy.Language, text:str): 
+def get_svo_tripplets(nlp: spacy.Language, text:str):
     """Get simple subject - verb - object triples from text.
 
     Args:
@@ -111,10 +111,10 @@ def get_svo_tripplets(nlp: spacy.Language, text:str):
 
     Returns:
         SVO triples Generator: Sunject - verb - object triples generator
-    """    
+    """
     doc = nlp(text)
     return subject_verb_object_triples(doc)
-    
+
 
 """
 Usage Example:

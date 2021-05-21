@@ -44,7 +44,7 @@ def bootstrap():
             st.write("#### Interpreting query as:")
             st.code(query)
 
-            response = resolver.query(query_text)
+            response = resolver.resolve(query)
 
             st.write("#### Response:")
             visualizer.visualize(query, response)

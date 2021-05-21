@@ -5,14 +5,15 @@ from leto.model import Entity, Relation
 
 
 class DummyLoader(Loader):
-    def __init__(self, n_tuples: int, max_index: int) -> None:
-        self.n_tuples = n_tuples
-        self.max_index = max_index
+    def __init__(self, tuples: str) -> None:
+        self.tuples = tuples
 
     def load(self):
-        for _ in range(self.n_tuples):
+        for line in self.tuples.split("\n"):
+            e1, r, e2 = line.split()
+
             yield Relation(
-                    label=f"relation{random.randint(0, self.max_index)}",
-                    entity_from=Entity(name=f"Entity{random.randint(0, self.max_index)}", type="Entity"),
-                    entity_to=Entity(name=f"Entity{random.randint(0, self.max_index)}", type="Entity"),
+                    label=r,
+                    entity_from=Entity(name=e1, type="Entity"),
+                    entity_to=Entity(name=e2, type="Entity"),
                 )

@@ -136,7 +136,7 @@ class GraphQueryResolver(QueryResolver):
     def __init__(self, storage: GraphStorage) -> None:
         self.storage = storage
 
-    def query(self, query: Query) -> Iterable[Relation]:
+    def resolve(self, query: Query) -> Iterable[Relation]:
         raise NotImplementedError()
 
 
