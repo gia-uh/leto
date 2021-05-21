@@ -4,13 +4,15 @@ services:
   leto:
     image: letoai/leto:latest
     container_name: leto
+    user: "1000"
     build: .
     ports:
       - 8501:8501
     volumes:
       - ../leto:/usr/local/lib/python3.8/site-packages/leto
-      - ../:/src
-    working_dir: "/src"
+      - ../:/home/coder/leto
+      - vscode-leto-extensions:/home/coder/.vscode-server/extensions
+    working_dir: "/home/coder/leto"
     command: ["streamlit", "run", "leto.py"]
 
   neo4j:
@@ -22,3 +24,6 @@ services:
       - 7687:7687
     environment:
       - NEO4J_AUTH=neo4j/12345678
+
+volumes:
+  vscode-leto-extensions:
