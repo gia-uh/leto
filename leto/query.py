@@ -22,6 +22,12 @@ class WhatQuery(Query):
     relation: str
 
 
+@dataclass
+class WhoQuery(Query):
+    entity: str
+    relation: str
+
+
 class QueryResolver(abc.ABC):
     @abc.abstractmethod
     def resolve(self, query: Query) -> Iterable[Relation]:
@@ -40,6 +46,11 @@ class DummyQueryParser(QueryParser):
 
         if m:
             return WhatQuery(entity=m.group("entity"), relation=m.group("relation"))
+
+        m = re.match(r"who is the (?P<relation>\w+) of (?P<entity>\w+)", query)
+
+        if m:
+            return WhoQuery(entity=m.group("entity"), relation=m.group("relation"))
 
         return MatchQuery(terms=list(set(query.split())))
 
