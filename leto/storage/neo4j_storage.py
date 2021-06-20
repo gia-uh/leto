@@ -7,7 +7,6 @@ from pprint import pprint
 
 from neo4j import GraphDatabase, basic_auth
 
-
 username = os.getenv("NEO4J_USER", "neo4j")
 password = os.getenv("NEO4J_PASSWORD", "12345678")
 neo4jVersion = os.getenv("NEO4J_VERSION", "")
@@ -71,7 +70,7 @@ class GraphStorage(Storage):
         self.create_entity(relation.entity_to)
         self.create_relationship(relation)
 
-    def create_entity(self, entity: Entity):
+    def create_entity(self, entity: Entity, matched_callback = None, created_callback = None):
         with self.driver.session() as session:
             attrs = entity.__dict__.copy()
             attrs.pop("type")
@@ -79,11 +78,13 @@ class GraphStorage(Storage):
             result = session.read_transaction(self._find_node_by, entity.type, name=entity.name)
 
             if len(result) > 0:
-                print(f"Matched Entity {result[0]}")
+                if (not matched_callback is None):
+                    matched_callback(result[0])
                 return result[0]
 
             result = session.write_transaction(self._create_node, type=entity.type, name=entity.name, **attrs)
-            print(f"created Entity {result[0]}")
+            if (not created_callback is None):
+                created_callback(result[0])
             return result[0]
 
     def create_relationship(self, relation:Relation):
@@ -245,7 +246,7 @@ class GraphQueryResolver(QueryResolver):
         return self._resolve_triplet_query(query.entity, query.relation, "Person")
 
     def resolve_what(self, query: WhatQuery) -> Iterable[Relation]:
-        return self._resolve_triplet_query(query.entity, query.relation, "Thing")
+        return self._resolve_triplet_query(query.entity, query.relation, "Something")
     
     def resolve_match(self, query: MatchQuery) -> Iterable[Relation]:
         """
@@ -258,3 +259,7 @@ class GraphQueryResolver(QueryResolver):
             for term in query.terms:
                 results[term] = self._resolve_single_query(term)
         return results
+
+app = GraphStorage()
+resolver = GraphQueryResolver(app)
+pprint(resolver.resolve(MatchQuery(["python", "football"], match_relations=True)))

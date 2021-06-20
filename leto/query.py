@@ -14,7 +14,7 @@ class Query(abc.ABC):
 @dataclass
 class MatchQuery(Query):
     terms: List[str]
-    include_relations: bool = False
+    match_relations: bool = False
 
 
 @dataclass

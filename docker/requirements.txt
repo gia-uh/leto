@@ -12,3 +12,4 @@ fuzzywuzzy==0.18.0
 spacy==3.0.5
 textacy==0.11.0
 neo4j==4.2.1
+wikipedia=1.4.0
