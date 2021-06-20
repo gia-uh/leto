@@ -6,14 +6,15 @@ from typing import Iterable, List
 from leto.model import Relation
 
 
-@dataclass(frozen=True)
+@dataclass
 class Query(abc.ABC):
     pass
 
 
-@dataclass(frozen=True)
+@dataclass
 class MatchQuery(Query):
     terms: List[str]
+    include_relations: bool = False
 
 
 @dataclass
