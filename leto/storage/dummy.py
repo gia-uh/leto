@@ -40,31 +40,29 @@ class DummyQueryResolver(QueryResolver):
     def __init__(self, storage: DummyStorage) -> None:
         self.storage = storage
 
-        @visitor("query")
-        def query(query: Query):
-            raise NotImplementedError
+    def query_match(self, query: MatchQuery):
+        components = set(query.terms)
 
-        @query.register
-        def query_match(query: MatchQuery):
-            components = set(query.terms)
+        for r in self.storage.storage:
+            if r.entity_from.name in components or r.label in components or r.entity_to.name in components:
+                yield r
 
-            for r in self.storage.storage:
-                if r.entity_from.name in components or r.label in components or r.entity_to.name in components:
-                    yield r
+    def query_what(self, query: WhatQuery):
+        for r in self.storage.storage:
+            if r.entity_from.name == query.entity and r.label == query.relation:
+                yield r
 
-        @query.register
-        def query_what(query: WhatQuery):
-            for r in self.storage.storage:
-                if r.entity_from.name == query.entity and r.label == query.relation:
-                    yield r
-
-        @query.register
-        def query_who(query: WhoQuery):
-            for r in self.storage.storage:
-                if r.entity_to.name == query.entity and r.label == query.relation:
-                    yield r
-
-        self._query = query
+    def query_who(self, query: WhoQuery):
+        for r in self.storage.storage:
+            if r.entity_to.name == query.entity and r.label == query.relation:
+                yield r
 
     def resolve(self, query: Query):
-        return self._query(query=query)
+        if isinstance(query, MatchQuery):
+            return self.query_match(query)
+
+        if isinstance(query, WhatQuery):
+            return self.query_what(query)
+
+        if isinstance(query, WhoQuery):
+            return self.query_who(query)

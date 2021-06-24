@@ -1,7 +1,8 @@
+from abc import ABC, abstractmethod
 import os
-from typing import Iterable
+from typing import Iterable, Tuple
 from leto.model import Entity, Relation
-from leto.query import Query, QueryResolver, WhatQuery, WhoQuery, MatchQuery
+from leto.query import Query, QueryResolver, WhatQuery, WhichQuery, WhoQuery, MatchQuery
 from leto.storage import Storage
 from pprint import pprint
 
@@ -24,7 +25,7 @@ class GraphStorage(Storage):
         property dicts or even well formed where clauses, giving some flexibility degree.
         As a more advanced option, the class exposes a method to run directly queries onto
         the database server.
-        
+
     Usage:
     ```python
     app = GraphStorage()
@@ -99,7 +100,7 @@ class GraphStorage(Storage):
             results = session.read_transaction(self._run_query, query=query, data_reader=data_reader)
             if (len(results) == 0):
                 print("No data was found")
-            return results      
+            return results
 
     def run_write_query(self, query:str):
         with self.driver.session() as session:
@@ -177,7 +178,7 @@ class GraphQueryResolver(QueryResolver):
     pprint(resolver.resolve(WhatQuery("Closet", "have")))
     ```
     """
-    
+
     def __init__(self, storage: GraphStorage) -> None:
         self.storage = storage
 
@@ -193,7 +194,7 @@ class GraphQueryResolver(QueryResolver):
         def read_single_result(record):
             return record[entity_tag]
         return read_single_result
-    
+
     def _build_entity_from_node(self, node) -> Entity:
         entity_properties = node._properties.copy()
         entity_name = entity_properties.pop("name")
@@ -231,30 +232,172 @@ class GraphQueryResolver(QueryResolver):
         return results
 
     def resolve(self, query: Query) -> Iterable[Relation]:
-        switch = {"WhoQuery": self.resolve_who,
-                  "WhatQuery": self.resolve_what,
-                  "MatchQuery": self.resolve_match}
-        
+        switch = {WhoQuery: self.resolve_who,
+                  WhatQuery: self.resolve_what,
+                  WhichQuery: self.resolve_which,
+                  MatchQuery: self.resolve_match}
+
         try:
-            return switch[type(query).__name__](query)
+            return switch[type(query)](query)
         except Exception as e:
             #TODO: better handle resolve error
             raise e
 
     def resolve_who(self, query: WhoQuery) -> Iterable[Relation]:
-        return self._resolve_triplet_query(query.entity, query.relation, "Person")
+        entities = list(query.entities)
+
+        # Expand entities to contain instances of is_a
+        for entity in query.entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+
+                if relation.label == "is_a":
+                    yield relation
+                    entities.append(relation.entity_from)
+
+        # Solving where e1 is the who
+        for entity in entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+
+                if relation.label in query.terms:
+                    yield relation
+
+    def resolve_which(self, query: WhichQuery) -> Iterable[Relation]:
+        entities = list(query.entities)
+
+        # Expand entities to contain instances of is_a
+        for entity in query.entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+
+                if relation.label == "is_a":
+                    yield relation
+                    entities.append(relation.entity_from)
+
+        # Solving where e1 is the who
+        for entity in entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in Q(self.storage).match(e1[r] >> e2).where({e1.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+
+                if relation.label in query.terms:
+                    yield relation
+
 
     def resolve_what(self, query: WhatQuery) -> Iterable[Relation]:
-        return self._resolve_triplet_query(query.entity, query.relation, "Thing")
-    
+        # Solving for e1
+        for entity in query.entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in Q(self.storage).match(e1[r] >> e2).where({e1.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+                yield relation
+
+        # Solving when e1 is_a what they are asking
+        for entity in query.entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+
+                if relation.label == "is_a":
+                    yield relation
+
+
     def resolve_match(self, query: MatchQuery) -> Iterable[Relation]:
-        """
-        """
-        results = {}
-        if (query.match_relations):
-            for term in query.terms:
-                results[term] = self._resolve_triplet_query(term)
-        else:
-            for term in query.terms:
-                results[term] = self._resolve_single_query(term)
-        return results
+        for entity in query.entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in Q(self.storage).match(e1[r] >> e2).where({e1.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+                yield relation
+
+
+class Q:
+    def __init__(self, storage: GraphStorage) -> None:
+        self._storage = storage
+        self._query_body = []
+
+    def match(self, path) -> "Q":
+        self._query_body.append(Q.Match(path))
+        return self
+
+    def where(self, kwargs:dict) -> "Q":
+        self._query_body.append(Q.Where(kwargs))
+        return self
+
+    def get(self, *items) -> "Iterable[Relation]":
+        self._query_body.append(Q.Return(*items))
+        q = str(self)
+
+        def reader(record):
+            return [record[str(item)] for item in items]
+
+        return self._storage.run_read_query(q, reader)
+
+    def __str__(self) -> str:
+        return "\n".join(str(q) for q in self._query_body)
+
+    @staticmethod
+    def vars(names:str) -> "Tuple[Q.Var]":
+        for name in names.split():
+            yield Q.Var(name)
+
+    class Var:
+        def __init__(self, name:str) -> None:
+            self._name = name
+
+        def __getitem__(self, other) -> "Q.HalfPath":
+            return Q.HalfPath(self, other)
+
+        def __str__(self) -> str:
+            return self._name
+
+        def __getattr__(self, attr):
+            return f"{self._name}.{attr}"
+
+    class HalfPath:
+        def __init__(self, entity, relation) -> None:
+            self.entity = entity
+            self.relation = relation
+
+        def __rshift__(self, other) -> "Q.FullPath":
+            return Q.FullPath(self.entity, self.relation, other)
+
+    class FullPath:
+        def __init__(self, e1, r, e2) -> None:
+            self.e1 = e1
+            self.r = r
+            self.e2 = e2
+
+        def __str__(self):
+            return f"({self.e1}) - [{self.r}] -> ({self.e2})"
+
+    class Match:
+        def __init__(self, path) -> None:
+            self.path = path
+
+        def __str__(self) -> str:
+            return f"MATCH {self.path}"
+
+    class Where:
+        def __init__(self, kwargs) -> None:
+            self.kwargs = kwargs
+
+        def __str__(self) -> str:
+            return "WHERE " + " AND ".join(f"{key} = {repr(value)}" for key,value in self.kwargs.items())
+
+    class Return:
+        def __init__(self, *items) -> None:
+            self.items = items
+
+        def __str__(self) -> str:
+            return "RETURN " + ", ".join([str(item) for item in self.items])

@@ -1,6 +1,3 @@
-from dataclasses import dataclass
-
-
 class Entity:
     name: str
     type: str
@@ -19,6 +16,9 @@ class Entity:
 
     def __eq__(self, o: object) -> bool:
         return str(self) == str(o)
+
+    def __hash__(self) -> int:
+        return hash(str(self))
 
 
 class Relation:
@@ -41,3 +41,6 @@ class Relation:
 
     def __eq__(self, o: object) -> bool:
         return str(self) == str(o)
+
+    def __hash__(self) -> int:
+        return hash(str(self))

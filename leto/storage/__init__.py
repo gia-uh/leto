@@ -21,5 +21,5 @@ class Storage(abc.ABC):
 def get_storages() -> List[Storage]:
     from leto.storage.dummy import DummyStorage
     from leto.storage.neo4j_storage import GraphStorage
-    
-    return [DummyStorage, GraphStorage]
+
+    return [GraphStorage]

@@ -1,5 +1,7 @@
+import os
 import functools
 import typing
+import spacy
 
 import streamlit as st
 
@@ -36,3 +38,71 @@ def visitor(arg:str):
         return wrapper
 
     return wrap
+
+
+data_directory = "/home/coder/leto/data/models"
+
+
+def get_model(name:str)-> spacy.Language:
+    """Get an spacy language model from different sources. First, tryes to load
+    the model from disk, if fails, then load and install from original repo.
+
+    Args:
+        name (str): Name, identification for the language.
+
+    Raises:
+        e: IOError if no model with the specified name is found
+
+    Returns:
+        spacy.Language: Language
+    """
+    try:
+        print("model loading", end="", flush=True)
+        model = get_local_model(name)
+        print(" done")
+        if (not model):
+            model = get_online_model(name)
+        return model
+    except Exception as e:
+        raise e
+
+def get_local_model(name:str) -> spacy.Language:
+    """Gets Language model and data from disk
+
+    Args:
+        name (str):  Name, identification for the language.
+
+    Returns:
+        spacy.Language | None: Preloaded language
+    """
+    try:
+        return spacy.load(os.path.join(data_directory, name))
+    except:
+        return None
+
+def save_model(model: spacy.Language, name:str):
+    """Saves Language model data to disk
+
+    Args:
+        model (spacy.Language): Language model to save
+        name (str): Name, identification for the language. If name is already in use will override saved data.
+    """
+    config = model.config
+    model.to_disk(os.path.join(data_directory, name))
+
+def get_online_model(name:str, save_to_local:bool = True, pythonNick:str = "python") -> spacy.Language:
+    """Load and install spacy language model from original repo. If save_to_local then save to disk after load.
+
+    Args:
+        name (str): Name, identification for the language.
+        save_to_local (bool, optional): Enable save model to disk. Defaults to True.
+        pythonNick (str, optional): Python alias used for current python version. Defaults to "python".
+
+    Returns:
+        spacy.Language: Name, identification for the language.
+    """
+    os.system(f"{pythonNick} -m spacy download {name}")
+    nlp = spacy.load(name)
+    if (save_to_local):
+        save_model(nlp, name)
+    return nlp
