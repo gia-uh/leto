@@ -2,11 +2,13 @@ from abc import ABC, abstractmethod
 import os
 from typing import Iterable, Tuple
 from leto.model import Entity, Relation
-from leto.query import Query, QueryResolver, WhatQuery, WhichQuery, WhoQuery, MatchQuery
+from leto.query import HowManyQuery, Query, QueryResolver, WhatQuery, WhichQuery, WhoQuery, MatchQuery
 from leto.storage import Storage
 from pprint import pprint
 
 from neo4j import GraphDatabase, basic_auth
+
+import streamlit as st
 
 
 username = os.getenv("NEO4J_USER", "neo4j")
@@ -235,7 +237,8 @@ class GraphQueryResolver(QueryResolver):
         switch = {WhoQuery: self.resolve_who,
                   WhatQuery: self.resolve_what,
                   WhichQuery: self.resolve_which,
-                  MatchQuery: self.resolve_match}
+                  MatchQuery: self.resolve_match,
+                  HowManyQuery:self.resolve_howmany}
 
         try:
             return switch[type(query)](query)
@@ -320,6 +323,17 @@ class GraphQueryResolver(QueryResolver):
                 relation = self._build_relation_from_triplet(t)
                 yield relation
 
+    def resolve_howmany(self,query:HowManyQuery)-> Iterable[Relation]:
+        for entity in query.entities:
+            
+            e0,r0,e1, r, e2 = Q.vars("e0 r0 e1 r e2")
+            
+            q=Q(self.storage)
+            q._query_body=[f"MATCH (e0)-[r0:is_a]->(e1)-[r:has_property]->(e2:PROP) WHERE e1.name = {repr(entity.name)}"]
+
+            for t in q.get(e0, r0, e1):
+                relation = self._build_relation_from_triplet(t)
+                yield relation
 
 class Q:
     def __init__(self, storage: GraphStorage) -> None:

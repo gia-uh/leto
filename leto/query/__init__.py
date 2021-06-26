@@ -28,6 +28,11 @@ class WhoQuery(Query):
     entities: List[Entity]
     terms: List[str]
 
+@dataclass
+class HowManyQuery(Query):
+    entities: List[Entity]
+    terms: List[str]
+
 
 @dataclass
 class WhichQuery(Query):
@@ -63,6 +68,9 @@ class RuleBasedQueryParser(QueryParser):
 
         if doc[0].lemma_ == "cuál":
             return WhichQuery(entities=entities, terms=terms)
+
+        if doc[0].lemma_ in ["cuánto","cuántos"]:
+            return HowManyQuery(entities=entities, terms=terms)
 
         return MatchQuery(entities=entities, terms=terms)
 

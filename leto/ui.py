@@ -3,7 +3,7 @@ import streamlit as st
 from .loaders import get_loaders
 from .storage import Storage, get_storages
 from .query import QueryParser, QueryResolver, get_parsers
-from .visualization import DummyVisualizer, Visualizer
+from .visualization import DummyVisualizer, Visualizer,SwitchVisualizer
 from io import StringIO
 
 
@@ -17,7 +17,7 @@ def bootstrap():
 
     storage: Storage = storage_cls()
     resolver: QueryResolver = storage.get_query_resolver()
-    visualizer: Visualizer = DummyVisualizer()
+    visualizer: Visualizer = SwitchVisualizer()
 
     main, side = st.beta_columns((2, 1))
 
@@ -44,10 +44,11 @@ def bootstrap():
             st.write("#### Interpreting query as:")
             st.code(query)
 
-            response = resolver.resolve(query)
+            response = list(resolver.resolve(query))
 
             st.write("#### Response:")
             visualizer.visualize(query, response)
+            
 
 
 def load_data(storage):

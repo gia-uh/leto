@@ -7,6 +7,7 @@ class Entity:
         self.type = type
         for k, v in kwargs.items():
             setattr(self, k, v)
+        self.properties={k:v for k, v in kwargs.items()}
 
     def __str__(self) -> str:
         return f"{self.name}:{self.type}"
@@ -19,6 +20,10 @@ class Entity:
 
     def __hash__(self) -> int:
         return hash(str(self))
+
+    def get(self,att): 
+        return self.properties.get(att)
+
 
 
 class Relation:

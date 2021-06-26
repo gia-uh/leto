@@ -106,3 +106,4 @@ def get_online_model(name:str, save_to_local:bool = True, pythonNick:str = "pyth
     if (save_to_local):
         save_model(nlp, name)
     return nlp
+    
