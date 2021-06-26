@@ -46,6 +46,9 @@ def _seed_content(content: str, language: Language):
                 pass
         
 def seed_knowledge(wikipedia_page:str, language:Language = Language.en):
+    if (language is Language.es):
+        wikipedia.set_lang("es")
+        
     page = wikipedia.page(wikipedia_page)
     _seed_content(page.content, language)
     
