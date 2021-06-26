@@ -4,7 +4,6 @@ from typing import Iterable, Tuple
 from leto.model import Entity, Relation
 from leto.query import Query, QueryResolver, WhatQuery, WhereQuery, WhichQuery, WhoQuery, MatchQuery
 from leto.storage import Storage
-from pprint import pprint
 
 from neo4j import GraphDatabase, basic_auth
 
@@ -12,7 +11,6 @@ from neo4j import GraphDatabase, basic_auth
 username = os.getenv("NEO4J_USER", "neo4j")
 password = os.getenv("NEO4J_PASSWORD", "12345678")
 neo4jVersion = os.getenv("NEO4J_VERSION", "")
-database = os.getenv("NEO4J_DATABASE", "neo4j")
 port = os.getenv("PORT", 7687)
 url = os.getenv("NEO4J_URI", f"bolt://neo4j:{port}")
 
@@ -52,8 +50,8 @@ class GraphStorage(Storage):
     ```
     """
 
-    def __init__(self, uri = url, user = username, password = password):
-        self.driver = GraphDatabase.driver(uri, auth = basic_auth(user, password))
+    def __init__(self):
+        self.driver = GraphDatabase.driver(url, auth = basic_auth(username, password))
 
     def close(self):
         self.driver.close()
@@ -229,7 +227,7 @@ class GraphQueryResolver(QueryResolver):
             results.append(self._build_entity_from_node(single))
         return results
 
-    def resolve(self, query: Query) -> Iterable[Relation]:
+    def _resolve_query(self, query: Query) -> Iterable[Relation]:
         switch = {
             WhoQuery: self.resolve_who,
             WhatQuery: self.resolve_what,
@@ -321,14 +319,6 @@ class GraphQueryResolver(QueryResolver):
 
 
     def resolve_what(self, query: WhatQuery) -> Iterable[Relation]:
-        # Solving for e1
-        for entity in query.entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in Q(self.storage).match(e1[r] >> e2).where({e1.name: entity.name}).get(e1, r, e2):
-                relation = self._build_relation_from_triplet(t)
-                yield relation
-
         # Solving when e1 is_a what they are asking
         for entity in query.entities:
             e1, r, e2 = Q.vars("e1 r e2")
@@ -338,6 +328,14 @@ class GraphQueryResolver(QueryResolver):
 
                 if relation.label == "is_a":
                     yield relation
+
+        # Solving for e1
+        for entity in query.entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in Q(self.storage).match(e1[r] >> e2).where({e1.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+                yield relation
 
 
     def resolve_match(self, query: MatchQuery) -> Iterable[Relation]:

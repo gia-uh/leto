@@ -1,3 +1,4 @@
+from leto.utils import Text
 from ..loaders import Loader
 
 from leto.model import Entity, Relation
@@ -8,7 +9,7 @@ class ManualLoader(Loader):
 
     entity[:type] - relation - entity[:type]
     """
-    def __init__(self, tuples: str) -> None:
+    def __init__(self, tuples: Text) -> None:
         self.tuples = tuples
 
     def load(self):

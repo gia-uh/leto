@@ -15,8 +15,8 @@ def bootstrap():
         storages = { cls.__name__:cls for cls in get_storages() }
         st.markdown("## 💾 Data storage info")
         storage_cls = storages[st.selectbox("Storage driver", list(storages))]
+        storage: Storage = _build_cls(storage_cls)
 
-    storage: Storage = storage_cls()
     resolver: QueryResolver = storage.get_query_resolver()
     visualizers: List[Visualizer] = [DummyVisualizer(), MapVisualizer(), GraphVisualizer()]
 
@@ -45,7 +45,7 @@ def bootstrap():
             st.write("#### 💡 Interpreting query as:")
             st.code(query)
 
-            response = list(resolver.resolve(query))
+            response = list(resolver._resolve_query(query))
 
             if not response:
                 st.error("😨 No data was found to answer that query!")
@@ -81,6 +81,7 @@ def _build_cls(cls):
     import typing
     import enum
     import io
+    from leto.utils import Text
 
     init_args = typing.get_type_hints(cls.__init__)
     init_values = {}
@@ -91,6 +92,8 @@ def _build_cls(cls):
         elif v == StringIO:
             init_values[k] = st.file_uploader(k, accept_multiple_files=False)
         elif v == str:
+            init_values[k] = st.text_input(k, value="")
+        elif v == Text:
             init_values[k] = st.text_area(k, value="")
         elif issubclass(v, enum.Enum):
             values = { e.name: e.value for e in v }

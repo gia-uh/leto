@@ -1,6 +1,6 @@
 import abc
 import math
-from leto.query import MatchQuery, Query, WhereQuery
+from leto.query import MatchQuery, Query, WhatQuery, WhereQuery, WhoQuery
 from leto.model import Relation
 from typing import Callable, List
 import pandas as pd
@@ -45,7 +45,7 @@ class DummyVisualizer(Visualizer):
 
 class GraphVisualizer(Visualizer):
     def visualize(self, query: MatchQuery, response: List[Relation]) -> Visualization:
-        if not isinstance(query, MatchQuery):
+        if not isinstance(query, (MatchQuery, WhatQuery, WhoQuery)):
             return Visualization.Empty()
 
         def visualization():
@@ -70,7 +70,7 @@ class GraphVisualizer(Visualizer):
 
 class MapVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
-        if not isinstance(query, WhereQuery):
+        if not isinstance(query, (WhereQuery, WhatQuery)):
             return Visualization.Empty()
 
         mapeable = []

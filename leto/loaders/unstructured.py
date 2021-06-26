@@ -1,7 +1,7 @@
 import spacy
 import io
 from textacy.extract import subject_verb_object_triples
-from leto.utils import get_model
+from leto.utils import Text, get_model
 
 import enum
 
@@ -14,7 +14,7 @@ class Language(str, enum.Enum):
 
 
 class SVOFromText(Loader):
-    def __init__(self, text:str, language:Language) -> None:
+    def __init__(self, text:Text, language:Language) -> None:
         self.text = text
         self.language = language
 
