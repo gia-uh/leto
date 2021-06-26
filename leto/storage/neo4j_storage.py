@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import os
 from typing import Iterable, Tuple
 from leto.model import Entity, Relation
-from leto.query import Query, QueryResolver, WhatQuery, WhichQuery, WhoQuery, MatchQuery
+from leto.query import Query, QueryResolver, WhatQuery, WhereQuery, WhichQuery, WhoQuery, MatchQuery
 from leto.storage import Storage
 from pprint import pprint
 
@@ -130,7 +130,7 @@ class GraphStorage(Storage):
 
     @staticmethod
     def _create_node(tx, type:str, **args):
-        properties = ", ".join([f'{arg[0]}:"{arg[1]}"' for arg in args.items()])
+        properties = ", ".join([f'{arg[0]}:{repr(arg[1])}' for arg in args.items()])
 
         query = (
             f"CREATE (node:{type} {{{properties}}}) "
@@ -232,16 +232,46 @@ class GraphQueryResolver(QueryResolver):
         return results
 
     def resolve(self, query: Query) -> Iterable[Relation]:
-        switch = {WhoQuery: self.resolve_who,
-                  WhatQuery: self.resolve_what,
-                  WhichQuery: self.resolve_which,
-                  MatchQuery: self.resolve_match}
+        switch = {
+            WhoQuery: self.resolve_who,
+            WhatQuery: self.resolve_what,
+            WhichQuery: self.resolve_which,
+            MatchQuery: self.resolve_match,
+            WhereQuery: self.resolve_where,
+        }
 
         try:
             return switch[type(query)](query)
         except Exception as e:
             #TODO: better handle resolve error
             raise e
+
+    def resolve_where(self, query: WhereQuery) -> Iterable[Relation]:
+        entities = list(query.entities)
+
+        # Expand entities to contain instances of is_a
+        for entity in query.entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+
+                if relation.label == "is_a":
+                    yield relation
+                    entities.append(relation.entity_from)
+
+        # Solving where e1 is related with e2
+        for entity in entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in Q(self.storage).match(e1[r] >> e2).where({e1.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+
+                if relation.entity_to.type != "Place":
+                    continue
+
+                if relation.label in query.terms:
+                    yield relation
 
     def resolve_who(self, query: WhoQuery) -> Iterable[Relation]:
         entities = list(query.entities)

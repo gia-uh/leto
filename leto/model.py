@@ -8,6 +8,9 @@ class Entity:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def attr(self, k):
+        return getattr(self, k, None)
+
     def __str__(self) -> str:
         return f"{self.name}:{self.type}"
 

@@ -35,6 +35,13 @@ class WhichQuery(Query):
     terms: List[str]
 
 
+@dataclass
+class WhereQuery(Query):
+    entities: List[Entity]
+    terms: List[str]
+
+
+
 class QueryResolver(abc.ABC):
     @abc.abstractmethod
     def resolve(self, query: Query) -> Iterable[Relation]:
@@ -63,6 +70,9 @@ class RuleBasedQueryParser(QueryParser):
 
         if doc[0].lemma_ == "cuál":
             return WhichQuery(entities=entities, terms=terms)
+
+        if doc[0].lemma_ == "dónde":
+            return WhereQuery(entities=entities, terms=terms)
 
         return MatchQuery(entities=entities, terms=terms)
 
