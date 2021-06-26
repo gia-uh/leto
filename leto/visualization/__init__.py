@@ -53,8 +53,6 @@ class GraphVisualizer(Visualizer):
 
             entities = set(e.name for e in query.entities)
 
-            print(entities)
-
             for tuple in response:
                 for e in [tuple.entity_from, tuple.entity_to]:
                     color = "white"
