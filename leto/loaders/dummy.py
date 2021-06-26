@@ -37,7 +37,9 @@ class ManualLoader(Loader):
 
 
 class ExampleLoader(Loader):
-    """Loads an example dataset of countries and important events that have happened.
+    """Loads an example dataset where you can try the example queries.
+
+*⚠️ This modifies the database permanently!*
     """
     def load(self):
         Cuba = Entity("Cuba", "Place", lon=25, lat=50)

@@ -16,6 +16,7 @@ def bootstrap():
         st.markdown("## 💾 Data storage info")
         storage_cls = storages[st.selectbox("Storage driver", list(storages))]
         storage: Storage = _build_cls(storage_cls)
+        st.write(f"Current size: {storage.size} tuples")
 
     resolver: QueryResolver = storage.get_query_resolver()
     visualizers: List[Visualizer] = [DummyVisualizer(), MapVisualizer(), GraphVisualizer()]
@@ -23,11 +24,12 @@ def bootstrap():
     main, side = st.beta_columns((2, 1))
 
     with side:
-        with st.beta_expander("🔥 Load new data", False):
+        with st.beta_expander("🔥 Load new data", True):
             load_data(storage)
 
-    with st.sidebar:
-        st.write(f"Current size: {storage.size} tuples")
+        with st.beta_expander("❓ Example queries", True):
+            st.info("If you have loaded the example data (👆 run **ExampleLoader**), you can try some of these queries to see an example of LETO's functionality.")
+            example = example_queries()
 
     with st.sidebar:
         parsers = { cls.__name__:cls for cls in get_parsers() }
@@ -37,7 +39,15 @@ def bootstrap():
     parser: QueryParser = parser_cls()
 
     with main:
-        query_text = st.text_input("🔮 Enter a query for LETO")
+
+        if example:
+            st.info(f"Using example query: `{example}`.")
+            if st.button("↪️ Back"):
+                st.experimental_rerun()
+
+            query_text = example
+        else:
+            query_text = st.text_input("🔮 Enter a query for LETO")
 
         if query_text:
             query = parser.parse(query_text)
@@ -71,10 +81,23 @@ def load_data(storage):
     loader = _build_cls(loader_cls)
 
     if st.button("🚀 Run"):
+        progress = st.empty()
+
         for i, relation in enumerate(loader.load()):
+            progress.warning(f"⚙️ Loading {i+1} tuples...")
             storage.store(relation)
 
-        st.success(f"🥳 Succesfully loaded {i+1} tuples!")
+        progress.success(f"🥳 Succesfully loaded {i+1} tuples!")
+
+
+def example_queries():
+    for q in [
+        "How much is the salary of a DataScientist by gender?"
+    ]:
+        if st.button(f"❔ {q}"):
+            return q
+
+    return ""
 
 
 def _build_cls(cls):
