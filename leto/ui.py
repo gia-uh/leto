@@ -53,11 +53,19 @@ def bootstrap():
 def load_data(storage):
     loaders = {cls.__name__: cls for cls in get_loaders()}
     loader_cls = loaders[st.selectbox("Loader", list(loaders))]
+
+    docstring = loader_cls.__doc__
+
+    if docstring is not None:
+        st.write(loader_cls.__doc__)
+
     loader = _build_cls(loader_cls)
 
     if st.button("🚀 Run"):
-        for relation in loader.load():
+        for i, relation in enumerate(loader.load()):
             storage.store(relation)
+
+        st.success(f"🥳 Succesfully loaded {i+1} tuples!")
 
 
 def _build_cls(cls):
