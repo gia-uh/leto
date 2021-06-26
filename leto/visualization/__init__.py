@@ -1,10 +1,11 @@
 import abc
+import math
 from leto.query import Query, WhereQuery
 from leto.model import Relation
 from typing import Callable, List
-import pydot
 import pandas as pd
 import streamlit as st
+import graphviz
 
 
 class Visualization:
@@ -37,15 +38,24 @@ class Visualizer(abc.ABC):
 class DummyVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
         def visualization():
-            for r in response:
-                st.code(r)
+            st.code("\n".join(str(r) for r in response))
 
         return Visualization(title="📋 Returned tuples", score=0, run=visualization)
 
 
 class GraphVisualizer(Visualizer):
-    pass
+    def visualize(self, query: Query, response: List[Relation]) -> Visualization:
+        def visualization():
+            graph = graphviz.Digraph(engine="twopi")
 
+            for tuple in response:
+                graph.node(tuple.entity_from.name)
+                graph.node(tuple.entity_to.name)
+                graph.edge(tuple.entity_from.name, tuple.entity_to.name, label=tuple.label)
+
+            st.write(graph)
+
+        return Visualization(title="🔗 Entity graph", score=math.log2(len(response)), run=visualization)
 
 class MapVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
@@ -68,4 +78,4 @@ class MapVisualizer(Visualizer):
             st.write(df)
             st.map(df)
 
-        return Visualization(title="🗺️ Map", score=len(df), run=visualization)
+        return Visualization(title="🗺️ Map", score=len(df) / len(response), run=visualization)
