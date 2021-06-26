@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "/home/apiad/.pyenv/versions/3.8.7/envs/datascience/bin/python",
+    "python.pythonPath": "/home/apiad/.pyenv/versions/leto/bin/python",
     "python.formatting.provider": "black",
     "python.linting.pylintEnabled": false,
     "python.linting.mypyEnabled": true,

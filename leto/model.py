@@ -9,6 +9,9 @@ class Entity:
             setattr(self, k, v)
         self.properties={k:v for k, v in kwargs.items()}
 
+    def attr(self, k):
+        return getattr(self, k, None)
+
     def __str__(self) -> str:
         return f"{self.name}:{self.type}"
 

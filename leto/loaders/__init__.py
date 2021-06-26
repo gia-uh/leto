@@ -11,7 +11,7 @@ class Loader(abc.ABC):
 
 def get_loaders() -> List[Loader]:
     from .unstructured import SVOFromFile, SVOFromText
-    from .dummy import DummyLoader
+    from .dummy import ManualLoader, ExampleLoader
     from .structured import CsvLoader
 
-    return [DummyLoader, CsvLoader, SVOFromFile, SVOFromText]
+    return [ManualLoader, CsvLoader, SVOFromFile, SVOFromText, ExampleLoader]
