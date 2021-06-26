@@ -4,7 +4,7 @@ import streamlit as st
 from .loaders import get_loaders
 from .storage import Storage, get_storages
 from .query import QueryParser, QueryResolver, get_parsers
-from .visualization import DummyVisualizer, Visualizer, CountVisualizer, MapVisualizer
+from .visualization import DummyVisualizer, Visualizer, MapVisualizer, GraphVisualizer, CountVisualizer
 from io import StringIO
 
 
@@ -15,19 +15,21 @@ def bootstrap():
         storages = {cls.__name__: cls for cls in get_storages()}
         st.markdown("## 💾 Data storage info")
         storage_cls = storages[st.selectbox("Storage driver", list(storages))]
+        storage: Storage = _build_cls(storage_cls)
+        st.write(f"Current size: {storage.size} tuples")
 
-    storage: Storage = storage_cls()
     resolver: QueryResolver = storage.get_query_resolver()
-    visualizers: List[Visualizer] = [DummyVisualizer(), MapVisualizer(),CountVisualizer()]
+    visualizers: List[Visualizer] = [DummyVisualizer(), MapVisualizer(), GraphVisualizer(), CountVisualizer()]
 
     main, side = st.beta_columns((2, 1))
 
     with side:
-        with st.beta_expander("🔥 Load new data", False):
+        with st.beta_expander("🔥 Load new data", True):
             load_data(storage)
 
-    with st.sidebar:
-        st.write(f"Current size: {storage.size} tuples")
+        with st.beta_expander("❓ Example queries", True):
+            st.info("If you have loaded the example data (👆 run **ExampleLoader**), you can try some of these queries to see an example of LETO's functionality.")
+            example = example_queries()
 
     with st.sidebar:
         parsers = {cls.__name__: cls for cls in get_parsers()}
@@ -37,7 +39,15 @@ def bootstrap():
     parser: QueryParser = parser_cls()
 
     with main:
-        query_text = st.text_input("🔮 Enter a query for LETO")
+
+        if example:
+            st.info(f"Using example query: `{example}`")
+            if st.button("↪️ Back"):
+                st.experimental_rerun()
+
+            query_text = example
+        else:
+            query_text = st.text_input("🔮 Enter a query for LETO")
 
         if query_text:
             query = parser.parse(query_text)
@@ -45,7 +55,11 @@ def bootstrap():
             st.write("#### 💡 Interpreting query as:")
             st.code(query)
 
-            response = list(resolver.resolve(query))
+            response = resolver.resolve(query)
+
+            if not response:
+                st.error("😨 No data was found to answer that query!")
+                st.stop()
 
             if not response:
                 st.error("😨 No data was found to answer that query!")
@@ -71,16 +85,36 @@ def load_data(storage):
     loader = _build_cls(loader_cls)
 
     if st.button("🚀 Run"):
+        progress = st.empty()
+
         for i, relation in enumerate(loader.load()):
+            progress.warning(f"⚙️ Loading {i+1} tuples...")
             storage.store(relation)
 
-        st.success(f"🥳 Succesfully loaded {i+1} tuples!")
+        progress.success(f"🥳 Succesfully loaded {i+1} tuples!")
+
+
+def example_queries():
+    example_query = ""
+
+    for q in [
+        "show me info about Cuba",
+        "who has led a Revolution",
+        "where has there been a Revolution",
+        "Cuban Revolution and Vladimir Illich Lenin",
+        "how much is the salary of a DataScientist by gender",
+    ]:
+        if st.button(f"❔ {q}"):
+            example_query = q
+
+    return example_query
 
 
 def _build_cls(cls):
     import typing
     import enum
     import io
+    from leto.utils import Text
 
     init_args = typing.get_type_hints(cls.__init__)
     init_values = {}
@@ -91,6 +125,8 @@ def _build_cls(cls):
         elif v == StringIO:
             init_values[k] = st.file_uploader(k, accept_multiple_files=False)
         elif v == str:
+            init_values[k] = st.text_input(k, value="")
+        elif v == Text:
             init_values[k] = st.text_area(k, value="")
         elif issubclass(v, enum.Enum):
             values = {e.name: e.value for e in v}

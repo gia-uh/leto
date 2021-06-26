@@ -13,7 +13,6 @@ from leto.query import (
     MatchQuery,
 )
 from leto.storage import Storage
-from pprint import pprint
 
 from neo4j import GraphDatabase, basic_auth
 
@@ -23,7 +22,6 @@ import streamlit as st
 username = os.getenv("NEO4J_USER", "neo4j")
 password = os.getenv("NEO4J_PASSWORD", "12345678")
 neo4jVersion = os.getenv("NEO4J_VERSION", "")
-database = os.getenv("NEO4J_DATABASE", "neo4j")
 port = os.getenv("PORT", 7687)
 url = os.getenv("NEO4J_URI", f"bolt://neo4j:{port}")
 
@@ -63,8 +61,8 @@ class GraphStorage(Storage):
     ```
     """
 
-    def __init__(self, uri=url, user=username, password=password):
-        self.driver = GraphDatabase.driver(uri, auth=basic_auth(user, password))
+    def __init__(self):
+        self.driver = GraphDatabase.driver(url, auth = basic_auth(username, password))
 
     def close(self):
         self.driver.close()
@@ -85,21 +83,13 @@ class GraphStorage(Storage):
 
     def create_entity(self, entity: Entity):
         with self.driver.session() as session:
-            attrs = entity.__dict__.copy()
-            attrs.pop("type")
-            attrs.pop("name")
-            result = session.read_transaction(
-                self._find_node_by, entity.type, name=entity.name
-            )
+            attrs = entity.attrs.copy()
+            result = session.read_transaction(self._find_node_by, entity.type, name=entity.name)
 
             if len(result) > 0:
-                print(f"Matched Entity {result[0]}")
                 return result[0]
 
-            result = session.write_transaction(
-                self._create_node, type=entity.type, name=entity.name, **attrs
-            )
-            print(f"created Entity {result[0]}")
+            result = session.write_transaction(self._create_node, type=entity.type, name=entity.name, **attrs)
             return result[0]
 
     def create_relationship(self, relation: Relation):
@@ -272,7 +262,7 @@ class GraphQueryResolver(QueryResolver):
             results.append(self._build_entity_from_node(single))
         return results
 
-    def resolve(self, query: Query) -> Iterable[Relation]:
+    def _resolve_query(self, query: Query) -> Iterable[Relation]:
         switch = {
             WhoQuery: self.resolve_who,
             WhatQuery: self.resolve_what,
@@ -322,8 +312,7 @@ class GraphQueryResolver(QueryResolver):
                 if relation.entity_to.type != "Place":
                     continue
 
-                if relation.label in query.terms:
-                    yield relation
+                yield relation
 
     def resolve_who(self, query: WhoQuery) -> Iterable[Relation]:
         entities = list(query.entities)
@@ -394,6 +383,16 @@ class GraphQueryResolver(QueryResolver):
                     yield relation
 
     def resolve_what(self, query: WhatQuery) -> Iterable[Relation]:
+        # Solving when e1 is_a what they are asking
+        for entity in query.entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+
+                if relation.label == "is_a":
+                    yield relation
+
         # Solving for e1
         for entity in query.entities:
             e1, r, e2 = Q.vars("e1 r e2")
@@ -407,7 +406,11 @@ class GraphQueryResolver(QueryResolver):
                 relation = self._build_relation_from_triplet(t)
                 yield relation
 
-        # Solving when e1 is_a what they are asking
+
+    def resolve_match(self, query: MatchQuery) -> Iterable[Relation]:
+        entities = list(query.entities)
+
+        # Expand entities to contain instances of is_a
         for entity in query.entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
@@ -421,9 +424,9 @@ class GraphQueryResolver(QueryResolver):
 
                 if relation.label == "is_a":
                     yield relation
+                    entities.append(relation.entity_from)
 
-    def resolve_match(self, query: MatchQuery) -> Iterable[Relation]:
-        for entity in query.entities:
+        for entity in entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
             for t in (

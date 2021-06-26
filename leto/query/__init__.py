@@ -49,8 +49,11 @@ class WhereQuery(Query):
 
 class QueryResolver(abc.ABC):
     @abc.abstractmethod
-    def resolve(self, query: Query) -> Iterable[Relation]:
+    def _resolve_query(self, query: Query) -> Iterable[Relation]:
         pass
+
+    def resolve(self, query: Query) -> List[Relation]:
+        return list(set(self._resolve_query(query)))
 
 
 class QueryParser(abc.ABC):
@@ -59,31 +62,7 @@ class QueryParser(abc.ABC):
         pass
 
 
-class RuleBasedQueryParser(QueryParser):
-    def parse(self, query: str) -> Query:
-        nlp = get_model("es_core_news_sm")
-        doc = nlp(query)
-
-        entities = [Entity(e.text, e.label_) for e in doc.ents]
-        terms = [token.lemma_ for token in doc if token.pos_ in ["NOUN", "VERB"]]
-
-        if doc[0].lemma_ == "qué":
-            return WhatQuery(entities=entities, terms=terms)
-
-        if doc[0].lemma_ == "quién":
-            return WhoQuery(entities=entities, terms=terms)
-
-        if doc[0].lemma_ == "cuál":
-            return WhichQuery(entities=entities, terms=terms)
-
-        if doc[0].lemma_ in ["cuánto", "cuántos"]:
-            return HowManyQuery(entities=entities, terms=terms)
-
-        if doc[0].lemma_ == "dónde":
-            return WhereQuery(entities=entities, terms=terms)
-
-        return MatchQuery(entities=entities, terms=terms)
-
-
 def get_parsers():
-    return [RuleBasedQueryParser]
+    from leto.query.rules import SpanishRuleParser, EnglishRuleParser
+
+    return [EnglishRuleParser, SpanishRuleParser]
