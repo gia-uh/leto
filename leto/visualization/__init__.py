@@ -66,7 +66,7 @@ class GraphVisualizer(Visualizer):
 
             st.write(graph)
 
-        return Visualization(title="🔗 Entity graph", score=math.log2(len(response)), run=visualization)
+        return Visualization(title="🔗 Entity graph", score=max(0.1, math.log2(len(response))), run=visualization)
 
 class MapVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
@@ -86,7 +86,6 @@ class MapVisualizer(Visualizer):
         df = pd.DataFrame(mapeable).set_index("name")
 
         def visualization():
-            st.write(df)
             st.map(df)
 
         return Visualization(title="🗺️ Map", score=len(df) / len(response), run=visualization)

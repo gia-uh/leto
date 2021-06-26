@@ -14,4 +14,4 @@ def get_loaders() -> List[Loader]:
     from .dummy import ManualLoader, ExampleLoader
     from .structured import CsvLoader
 
-    return [ManualLoader, CsvLoader, SVOFromFile, SVOFromText, ExampleLoader]
+    return [ExampleLoader, ManualLoader, CsvLoader, SVOFromFile, SVOFromText]

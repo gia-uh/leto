@@ -266,8 +266,7 @@ class GraphQueryResolver(QueryResolver):
                 if relation.entity_to.type != "Place":
                     continue
 
-                if relation.label in query.terms:
-                    yield relation
+                yield relation
 
     def resolve_who(self, query: WhoQuery) -> Iterable[Relation]:
         entities = list(query.entities)

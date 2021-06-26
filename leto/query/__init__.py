@@ -59,4 +59,4 @@ class QueryParser(abc.ABC):
 def get_parsers():
     from leto.query.rules import SpanishRuleParser, EnglishRuleParser
 
-    return [SpanishRuleParser, EnglishRuleParser]
+    return [EnglishRuleParser, SpanishRuleParser]

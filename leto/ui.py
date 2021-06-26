@@ -41,7 +41,7 @@ def bootstrap():
     with main:
 
         if example:
-            st.info(f"Using example query: `{example}`.")
+            st.info(f"Using example query: `{example}`")
             if st.button("↪️ Back"):
                 st.experimental_rerun()
 
@@ -55,7 +55,7 @@ def bootstrap():
             st.write("#### 💡 Interpreting query as:")
             st.code(query)
 
-            response = list(resolver._resolve_query(query))
+            response = resolver.resolve(query)
 
             if not response:
                 st.error("😨 No data was found to answer that query!")
@@ -91,13 +91,18 @@ def load_data(storage):
 
 
 def example_queries():
+    example_query = ""
+
     for q in [
-        "How much is the salary of a DataScientist by gender?"
+        "show me info about Cuba",
+        "who has led a Revolution",
+        "where has there been a Revolution",
+        "how much is the salary of a DataScientist by gender",
     ]:
         if st.button(f"❔ {q}"):
-            return q
+            example_query = q
 
-    return ""
+    return example_query
 
 
 def _build_cls(cls):
