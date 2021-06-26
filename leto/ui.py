@@ -4,7 +4,7 @@ import streamlit as st
 from .loaders import get_loaders
 from .storage import Storage, get_storages
 from .query import QueryParser, QueryResolver, get_parsers
-from .visualization import DummyVisualizer, Visualizer, MapVisualizer, GraphVisualizer
+from .visualization import DummyVisualizer, Visualizer, MapVisualizer, GraphVisualizer, CountVisualizer
 from io import StringIO
 
 
@@ -12,14 +12,14 @@ def bootstrap():
     st.title("🧠 LETO: Learning Engine Through Ontologies")
 
     with st.sidebar:
-        storages = { cls.__name__:cls for cls in get_storages() }
+        storages = {cls.__name__: cls for cls in get_storages()}
         st.markdown("## 💾 Data storage info")
         storage_cls = storages[st.selectbox("Storage driver", list(storages))]
         storage: Storage = _build_cls(storage_cls)
         st.write(f"Current size: {storage.size} tuples")
 
     resolver: QueryResolver = storage.get_query_resolver()
-    visualizers: List[Visualizer] = [DummyVisualizer(), MapVisualizer(), GraphVisualizer()]
+    visualizers: List[Visualizer] = [DummyVisualizer(), MapVisualizer(), GraphVisualizer(), CountVisualizer()]
 
     main, side = st.beta_columns((2, 1))
 
@@ -32,7 +32,7 @@ def bootstrap():
             example = example_queries()
 
     with st.sidebar:
-        parsers = { cls.__name__:cls for cls in get_parsers() }
+        parsers = {cls.__name__: cls for cls in get_parsers()}
         st.markdown("## 🧙‍♂️ Query parsing")
         parser_cls = parsers[st.selectbox("Query parser", list(parsers))]
 
@@ -56,6 +56,10 @@ def bootstrap():
             st.code(query)
 
             response = resolver.resolve(query)
+
+            if not response:
+                st.error("😨 No data was found to answer that query!")
+                st.stop()
 
             if not response:
                 st.error("😨 No data was found to answer that query!")
@@ -125,7 +129,7 @@ def _build_cls(cls):
         elif v == Text:
             init_values[k] = st.text_area(k, value="")
         elif issubclass(v, enum.Enum):
-            values = { e.name: e.value for e in v }
+            values = {e.name: e.value for e in v}
             init_values[k] = values[st.selectbox(k, list(values))]
         elif v == io.BytesIO:
             init_values[k] = st.file_uploader(k)

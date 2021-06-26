@@ -30,6 +30,12 @@ class WhoQuery(Query):
 
 
 @dataclass
+class HowManyQuery(Query):
+    entities: List[Entity]
+    terms: List[str]
+
+
+@dataclass
 class WhichQuery(Query):
     entities: List[Entity]
     terms: List[str]
@@ -52,7 +58,7 @@ class QueryResolver(abc.ABC):
 
 class QueryParser(abc.ABC):
     @abc.abstractmethod
-    def parse(self, query:str) -> Query:
+    def parse(self, query: str) -> Query:
         pass
 
 

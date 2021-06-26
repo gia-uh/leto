@@ -3,12 +3,12 @@ import pandas as pd
 import numpy as np
 from fuzzywuzzy import process
 from io import BytesIO
+from leto.model import Entity, Relation
 
 
 class CsvLoader(Loader):
     def __init__(self, path: BytesIO) -> None:
         self.path = path
-        
 
     def infer_index(self):
         """infer an index column using uniqueness and text similarity to 'ID' and 'name'"""
@@ -38,17 +38,35 @@ class CsvLoader(Loader):
         # self.corr=self.df.select_dtypes(include=np.number).corr()
 
         for col in self.cand:
-            yield ({"id": self.index}, {"id": "same_as"}, {"id": col})
+            yield Relation(
+                entity_from=Entity(str(self.index), type="THING"),
+                label="same_as",
+                entity_to=Entity(str(col)),
+                type="THING",
+            )
 
         properties = [x for x in self.col if (x not in self.cand + [self.index])]
         for col in properties:
-            yield ({"id": self.index}, {"id": "has_property"}, {"id": col})
+            yield Relation(
+                entity_from=Entity(str(self.index), type="THING"),
+                label="has_property",
+                entity_to=Entity(str(col), type="PROP"),
+            )
 
         for col in self.col:
-            yield ({"id": col}, {"id": "is_a"}, {"id": str(self.df[col].dtype)})
+            yield Relation(
+                entity_from=Entity(
+                    str(col), type="PROP" if col in properties else "THING"
+                ),
+                label="is_a",
+                entity_to=Entity(str(self.df[col].dtype), type="TYPE"),
+            )
 
-        for row in self.df.iterrows():
-            entity = {"id": row.at[self.index]}
-            entity.update(row[properties].to_json())
-            entity["alt_id"] = row[self.cand].to_json()
-            yield (entity, {"id": "is_a"}, {"id": self.index})
+        for i, row in self.df.iterrows():
+            prop = row[properties].to_dict()
+            prop["alt_id"] = row[self.cand].to_dict()
+            yield Relation(
+                entity_from=Entity(name=str(row.at[self.index]), type="THING", **prop),
+                label="is_a",
+                entity_to=Entity(str(self.index), type="THING"),
+            )

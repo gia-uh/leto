@@ -1,15 +1,16 @@
 import abc
 import math
-from leto.query import MatchQuery, Query, WhatQuery, WhereQuery, WhoQuery
+from leto.query import MatchQuery, Query, WhatQuery, WhereQuery, WhoQuery, HowManyQuery
 from leto.model import Relation
 from typing import Callable, List
 import pandas as pd
 import streamlit as st
 import graphviz
 
+import plotly.express as px
 
 class Visualization:
-    def __init__(self, title:str, score:float, run:Callable) -> None:
+    def __init__(self, title: str, score: float, run: Callable) -> None:
         self.score = score
         self.title = title
         self.run = run
@@ -93,3 +94,53 @@ class MapVisualizer(Visualizer):
             st.map(df)
 
         return Visualization(title="🗺️ Map", score=len(df) / len(response), run=visualization)
+
+class CountVisualizer(Visualizer):
+    def visualize(self, query: Query, response: List[Relation]):
+        if not isinstance(query, HowManyQuery):
+            return Visualization.Empty()
+
+        entities = query.entities
+        terms = query.terms
+
+        interest_attributes = []
+
+        for R in response:
+            if R.label == "is_a" and R.entity_to.name in [x.name for x in entities]:
+                for att in R.entity_from.__dict__.keys():
+                    if att in terms:
+                        interest_attributes.append(att)
+
+        if not interest_attributes:
+            return Visualization.Empty()
+
+        data = {"name": [R.entity_from.name for R in response]}
+        for att in interest_attributes:
+            data[att] = [R.entity_from.get(att) for R in response]
+
+        df = pd.DataFrame(data)
+        df.set_index("name", inplace=True)
+        for col in df.columns:
+            try:
+                df[col] = pd.to_numeric(df[col])
+            except Exception:
+                pass
+
+        def visualization():
+            def bars(data: pd.Series,col):
+                pd.set_option('plotting.backend', 'plotly')
+                st.plotly_chart(data[col].plot.hist())
+
+            def pie(data: pd.Series,col):
+                st.plotly_chart(px.pie(df,col))
+
+            switch_paint={
+                       'int64':bars,
+                       'float64':bars,
+                       'object':pie
+                       }
+
+            for col in df.columns:
+                switch_paint[str(df.dtypes[col])](df,col)
+
+        return Visualization(title="📊 chart", score=len(df), run=visualization)
