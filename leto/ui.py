@@ -1,5 +1,6 @@
 from typing import List
 import streamlit as st
+from textwrap import dedent
 
 from .loaders import get_loaders
 from .storage import Storage, get_storages
@@ -92,10 +93,10 @@ def load_data(storage):
     loaders = {cls.__name__: cls for cls in get_loaders()}
     loader_cls = loaders[st.selectbox("Loader", list(loaders))]
 
-    docstring = loader_cls.__doc__
+    docstring = dedent(loader_cls.__doc__)
 
     if docstring is not None:
-        st.write(loader_cls.__doc__)
+        st.write(docstring)
 
     loader = _build_cls(loader_cls)
 

@@ -47,6 +47,7 @@ class SpanishRuleParser(RuleBasedQueryParser):
             WhoQuery: ["quién", "quien"],
             WhichQuery: ["cuál", "cual"],
             WhereQuery: ["dónde", "donde"],
+            HowManyQuery: ["cuánto", "cuanto"],
         }
 
 
@@ -60,4 +61,5 @@ class EnglishRuleParser(RuleBasedQueryParser):
             WhoQuery: ["who"],
             WhichQuery: ["which"],
             WhereQuery: ["where"],
+            HowManyQuery: ["how"],
         }

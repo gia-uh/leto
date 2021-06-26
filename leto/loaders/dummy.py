@@ -5,9 +5,10 @@ from leto.model import Entity, Relation
 
 
 class ManualLoader(Loader):
-    """Load manually introduced tuples of entities (with optional types) and relations in the format:
+    """
+    Load manually introduced tuples of entities (with optional types) and relations in the format:
 
-    entity[:type] - relation - entity[:type]
+        entity[:type] - relation - entity[:type]
     """
 
     def __init__(self, tuples: Text) -> None:
@@ -38,7 +39,8 @@ class ManualLoader(Loader):
 
 
 class ExampleLoader(Loader):
-    """Loads an example dataset where you can try the example queries.
+    """
+    Loads an example dataset where you can try the example queries.
 
     *⚠️ This modifies the database permanently!*
     """
