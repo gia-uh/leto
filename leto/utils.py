@@ -43,7 +43,7 @@ def visitor(arg:str):
 data_directory = "/home/coder/leto/data/models"
 
 
-def get_model(name:str)-> spacy.Language:
+def get_model(name:str="en_core_web_sm")-> spacy.Language:
     """Get an spacy language model from different sources. First, tryes to load
     the model from disk, if fails, then load and install from original repo.
 
