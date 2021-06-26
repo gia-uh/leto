@@ -80,11 +80,9 @@ class GraphStorage(Storage):
             result = session.read_transaction(self._find_node_by, entity.type, name=entity.name)
 
             if len(result) > 0:
-                print(f"Matched Entity {result[0]}")
                 return result[0]
 
             result = session.write_transaction(self._create_node, type=entity.type, name=entity.name, **attrs)
-            print(f"created Entity {result[0]}")
             return result[0]
 
     def create_relationship(self, relation:Relation):
