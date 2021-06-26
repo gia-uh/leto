@@ -4,7 +4,7 @@ import streamlit as st
 from .loaders import get_loaders
 from .storage import Storage, get_storages
 from .query import QueryParser, QueryResolver, get_parsers
-from .visualization import DummyVisualizer, Visualizer, SwitchVisualizer, MapVisualizer
+from .visualization import DummyVisualizer, Visualizer, CountVisualizer, MapVisualizer
 from io import StringIO
 
 
@@ -18,7 +18,7 @@ def bootstrap():
 
     storage: Storage = storage_cls()
     resolver: QueryResolver = storage.get_query_resolver()
-    visualizers: List[Visualizer] = [DummyVisualizer(), MapVisualizer()]
+    visualizers: List[Visualizer] = [DummyVisualizer(), MapVisualizer(),CountVisualizer()]
 
     main, side = st.beta_columns((2, 1))
 
@@ -47,9 +47,11 @@ def bootstrap():
 
             response = list(resolver.resolve(query))
 
-            visualizations = [
-                visualizer.visualize(query, response) for visualizer in visualizers
-            ]
+            if not response:
+                st.error("😨 No data was found to answer that query!")
+                st.stop()
+
+            visualizations = [visualizer.visualize(query, response) for visualizer in visualizers]
             visualizations = [v for v in visualizations if v.valid()]
             visualizations.sort(key=lambda v: v.score, reverse=True)
 

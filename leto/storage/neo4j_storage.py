@@ -442,11 +442,11 @@ class GraphQueryResolver(QueryResolver):
 
             q = Q(self.storage)
             q._query_body = [
-                f"MATCH (e0)-[r0:is_a*1..5]->(e1)-[r:has_property]->(e2:PROP) WHERE e1.name = {repr(entity.name)}"
+                f"MATCH (e0)-[r0:is_a*1..]->(e1)-[r:has_property]->(e2:PROP) WHERE e1.name = {repr(entity.name)}"
             ]
 
             for t in q.get(e0, r0, e1):
-                relation = self._build_relation_from_triplet(t)
+                relation = self._build_relation_from_triplet((t[0],t[1][0],t[2]))
                 yield relation
 
 

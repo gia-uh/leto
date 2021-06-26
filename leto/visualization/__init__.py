@@ -6,6 +6,7 @@ import pydot
 import pandas as pd
 import streamlit as st
 
+import plotly.express as px
 
 class Visualization:
     def __init__(self, title: str, score: float, run: Callable) -> None:
@@ -74,7 +75,7 @@ class MapVisualizer(Visualizer):
 
 
 class CountVisualizer(Visualizer):
-    def visualize(self, query: Query, response: Iterable[Relation]):
+    def visualize(self, query: Query, response: List[Relation]):
         if not isinstance(query, HowManyQuery):
             return Visualization.Empty()
 
@@ -105,19 +106,20 @@ class CountVisualizer(Visualizer):
                 pass
 
         def visualization():
-            def bars(self, data: pd.Series):
-                st.plotly_chart(data.plot.hist())
+            def bars(data: pd.Series,col):
+                pd.set_option('plotting.backend', 'plotly')
+                st.plotly_chart(data[col].plot.hist())
 
-            def pie(self, data: pd.Series):
-                st.plotly_chart(data.plot.pie())
+            def pie(data: pd.Series,col):
+                st.plotly_chart(px.pie(df,col))
 
-            # switch_paint={
-            #            np.int64:self.bars,
-            #            np.float64:self.bars,
-            #            np.object:self.pie
-            #            }
+            switch_paint={
+                       'int64':bars,
+                       'float64':bars,
+                       'object':pie
+                       }
 
             for col in df.columns:
-                switch_paint[df[col].dtype](df[col])
+                switch_paint[str(df.dtypes[col])](df,col)
 
         return Visualization(title="📊 chart", score=len(df), run=visualization)
