@@ -438,6 +438,18 @@ class GraphQueryResolver(QueryResolver):
                 relation = self._build_relation_from_triplet(t)
                 yield relation
 
+        for entity in entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e2.name: entity.name})
+                .get(e1, r, e2)
+            ):
+                relation = self._build_relation_from_triplet(t)
+                yield relation
+
     def resolve_howmany(self, query: HowManyQuery) -> Iterable[Relation]:
         for entity in query.entities:
 
