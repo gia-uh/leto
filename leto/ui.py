@@ -97,6 +97,7 @@ def example_queries():
         "show me info about Cuba",
         "who has led a Revolution",
         "where has there been a Revolution",
+        "Cuban Revolution and Vladimir Illich Lenin",
         "how much is the salary of a DataScientist by gender",
     ]:
         if st.button(f"❔ {q}"):

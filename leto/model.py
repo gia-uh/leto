@@ -5,11 +5,10 @@ class Entity:
     def __init__(self, name:str, type:str, **kwargs) -> None:
         self.name = name
         self.type = type
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+        self.attrs = kwargs.copy()
 
-    def attr(self, k):
-        return getattr(self, k, None)
+    def __getattr__(self, k):
+        return self.attrs[k]
 
     def __str__(self) -> str:
         return f"{self.name}:{self.type}"

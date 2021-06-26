@@ -45,14 +45,11 @@ class ExampleLoader(Loader):
         # Ontology of Revolutions
         Country = Entity("Country", "Thing")
 
-        Cuba = Entity("Cuba", "Place", lon=25, lat=50)
+        Cuba = Entity("Cuba", "Place", lon=-77.78, lat=21.52)
         yield Relation("is_a", Cuba, Country)
 
-        Rusia = Entity("Rusia", "Place", lon=90, lat=40)
+        Rusia = Entity("Rusia", "Place", lon=105.31, lat=61.52)
         yield Relation("is_a", Rusia, Country)
-
-        yield Relation(label="allied", entity_from=Cuba, entity_to=Rusia)
-        yield Relation(label="allied", entity_from=Rusia, entity_to=Cuba)
 
         Revolution = Entity("Revolution", "Event")
 

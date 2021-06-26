@@ -72,9 +72,7 @@ class GraphStorage(Storage):
 
     def create_entity(self, entity: Entity):
         with self.driver.session() as session:
-            attrs = entity.__dict__.copy()
-            attrs.pop("type")
-            attrs.pop("name")
+            attrs = entity.attrs.copy()
             result = session.read_transaction(self._find_node_by, entity.type, name=entity.name)
 
             if len(result) > 0:

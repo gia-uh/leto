@@ -44,14 +44,12 @@ class DummyVisualizer(Visualizer):
 
 
 class GraphVisualizer(Visualizer):
-    def visualize(self, query: MatchQuery, response: List[Relation]) -> Visualization:
-        if not isinstance(query, (MatchQuery, WhatQuery, WhoQuery)):
-            return Visualization.Empty()
-
+    def visualize(self, query: Query, response: List[Relation]) -> Visualization:
         def visualization():
             graph = graphviz.Digraph()
 
             entities = set(e.name for e in query.entities)
+            main_entities = set()
 
             for tuple in response:
                 for e in [tuple.entity_from, tuple.entity_to]:
@@ -59,10 +57,16 @@ class GraphVisualizer(Visualizer):
 
                     if e.name in entities:
                         color = "green"
+                        main_entities.add(e)
 
                     graph.node(e.name, fillcolor=color, style="filled")
 
                 graph.edge(tuple.entity_from.name, tuple.entity_to.name, label=tuple.label)
+
+            for e in main_entities:
+                for attr, value in e.attrs.items():
+                    graph.node(f"{attr}={value}", shape="rectangle", fillcolor="yellow", style="filled")
+                    graph.edge(e.name, f"{attr}={value}")
 
             st.write(graph)
 
@@ -77,7 +81,7 @@ class MapVisualizer(Visualizer):
 
         for tuple in response:
             for e in [tuple.entity_from, tuple.entity_to]:
-                if e.attr("lon"):
+                if "lon" in e.attrs:
                     mapeable.append(dict(name=e.name, lat=float(e.lat), lon=float(e.lon)))
 
         if not mapeable:
