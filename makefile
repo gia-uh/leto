@@ -11,5 +11,8 @@ pull-safe:
 clean-neo4j:
 	sudo rm -rf data/neo4j
 
+test:
+	pytest leto --doctest-modules --cov leto
+
 format:
 	black leto

@@ -1,7 +1,7 @@
 import wikipedia
 from leto.model import Entity, Relation
 from leto.loaders.unstructured import get_svo_tripplets, get_model
-from leto.storage.neo4j_storage import GraphStorage
+from leto.storage.neo4j import GraphStorage
 from leto.loaders.unstructured import Language
 
 
