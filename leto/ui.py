@@ -12,7 +12,7 @@ def bootstrap():
     st.title("🧠 LETO: Learning Engine Through Ontologies")
 
     with st.sidebar:
-        storages = { cls.__name__:cls for cls in get_storages() }
+        storages = {cls.__name__: cls for cls in get_storages()}
         st.markdown("## 💾 Data storage info")
         storage_cls = storages[st.selectbox("Storage driver", list(storages))]
 
@@ -30,7 +30,7 @@ def bootstrap():
         st.write(f"Current size: {storage.size} tuples")
 
     with st.sidebar:
-        parsers = { cls.__name__:cls for cls in get_parsers() }
+        parsers = {cls.__name__: cls for cls in get_parsers()}
         st.markdown("## 🧙‍♂️ Query parsing")
         parser_cls = parsers[st.selectbox("Query parser", list(parsers))]
 
@@ -47,7 +47,9 @@ def bootstrap():
 
             response = list(resolver.resolve(query))
 
-            visualizations = [visualizer.visualize(query, response) for visualizer in visualizers]
+            visualizations = [
+                visualizer.visualize(query, response) for visualizer in visualizers
+            ]
             visualizations = [v for v in visualizations if v.valid()]
             visualizations.sort(key=lambda v: v.score, reverse=True)
 
@@ -89,7 +91,7 @@ def _build_cls(cls):
         elif v == str:
             init_values[k] = st.text_area(k, value="")
         elif issubclass(v, enum.Enum):
-            values = { e.name: e.value for e in v }
+            values = {e.name: e.value for e in v}
             init_values[k] = values[st.selectbox(k, list(values))]
         elif v == io.BytesIO:
             init_values[k] = st.file_uploader(k)

@@ -44,7 +44,11 @@ class DummyQueryResolver(QueryResolver):
         components = set(query.terms)
 
         for r in self.storage.storage:
-            if r.entity_from.name in components or r.label in components or r.entity_to.name in components:
+            if (
+                r.entity_from.name in components
+                or r.label in components
+                or r.entity_to.name in components
+            ):
                 yield r
 
     def query_what(self, query: WhatQuery):

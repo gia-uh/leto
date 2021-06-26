@@ -28,6 +28,7 @@ class WhoQuery(Query):
     entities: List[Entity]
     terms: List[str]
 
+
 @dataclass
 class HowManyQuery(Query):
     entities: List[Entity]
@@ -46,7 +47,6 @@ class WhereQuery(Query):
     terms: List[str]
 
 
-
 class QueryResolver(abc.ABC):
     @abc.abstractmethod
     def resolve(self, query: Query) -> Iterable[Relation]:
@@ -55,7 +55,7 @@ class QueryResolver(abc.ABC):
 
 class QueryParser(abc.ABC):
     @abc.abstractmethod
-    def parse(self, query:str) -> Query:
+    def parse(self, query: str) -> Query:
         pass
 
 
@@ -76,14 +76,13 @@ class RuleBasedQueryParser(QueryParser):
         if doc[0].lemma_ == "cuál":
             return WhichQuery(entities=entities, terms=terms)
 
-        if doc[0].lemma_ in ["cuánto","cuántos"]:
+        if doc[0].lemma_ in ["cuánto", "cuántos"]:
             return HowManyQuery(entities=entities, terms=terms)
-            
+
         if doc[0].lemma_ == "dónde":
             return WhereQuery(entities=entities, terms=terms)
 
         return MatchQuery(entities=entities, terms=terms)
-
 
 
 def get_parsers():

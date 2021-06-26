@@ -9,7 +9,6 @@ from leto.model import Entity, Relation
 class CsvLoader(Loader):
     def __init__(self, path: BytesIO) -> None:
         self.path = path
-        
 
     def infer_index(self):
         """infer an index column using uniqueness and text similarity to 'ID' and 'name'"""
@@ -40,30 +39,34 @@ class CsvLoader(Loader):
 
         for col in self.cand:
             yield Relation(
-                    entity_from= Entity(str(self.index),type='THING'),
-                    label= "same_as",
-                    entity_to= Entity(str(col)),type='THING')
+                entity_from=Entity(str(self.index), type="THING"),
+                label="same_as",
+                entity_to=Entity(str(col)),
+                type="THING",
+            )
 
         properties = [x for x in self.col if (x not in self.cand + [self.index])]
         for col in properties:
             yield Relation(
-                    entity_from= Entity(str(self.index),type='THING'),
-                    label= "has_property",
-                    entity_to= Entity(str(col),type='PROP'))
+                entity_from=Entity(str(self.index), type="THING"),
+                label="has_property",
+                entity_to=Entity(str(col), type="PROP"),
+            )
 
         for col in self.col:
             yield Relation(
-                    entity_from= Entity(str(col),type='PROP'if col in properties else 'THING'),
-                    label= "is_a",
-                    entity_to= Entity(str(self.df[col].dtype),type='TYPE'))
+                entity_from=Entity(
+                    str(col), type="PROP" if col in properties else "THING"
+                ),
+                label="is_a",
+                entity_to=Entity(str(self.df[col].dtype), type="TYPE"),
+            )
 
-        for i,row in self.df.iterrows():
-            prop=row[properties].to_dict()
+        for i, row in self.df.iterrows():
+            prop = row[properties].to_dict()
             prop["alt_id"] = row[self.cand].to_dict()
             yield Relation(
-                    entity_from= Entity(
-                        name=str(row.at[self.index]),
-                        type='THING',
-                        **prop),
-                    label= "is_a",
-                    entity_to= Entity(str(self.index),type='THING'))
+                entity_from=Entity(name=str(row.at[self.index]), type="THING", **prop),
+                label="is_a",
+                entity_to=Entity(str(self.index), type="THING"),
+            )

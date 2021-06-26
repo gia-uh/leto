@@ -8,6 +8,7 @@ class ManualLoader(Loader):
 
     entity[:type] - relation - entity[:type]
     """
+
     def __init__(self, tuples: str) -> None:
         self.tuples = tuples
 
@@ -19,25 +20,26 @@ class ManualLoader(Loader):
             e2 = e2.strip()
 
             if ":" in e1:
-                e1,t1 = e1.split(":")
+                e1, t1 = e1.split(":")
             else:
-                t1="Thing"
+                t1 = "Thing"
 
             if ":" in e2:
-                e2,t2 = e2.split(":")
+                e2, t2 = e2.split(":")
             else:
-                t2="Thing"
+                t2 = "Thing"
 
             yield Relation(
-                    label=r,
-                    entity_from=Entity(name=e1, type=t1),
-                    entity_to=Entity(name=e2, type=t2),
-                )
+                label=r,
+                entity_from=Entity(name=e1, type=t1),
+                entity_to=Entity(name=e2, type=t2),
+            )
 
 
 class ExampleLoader(Loader):
     """Loads an example dataset of countries and important events that have happened.
     """
+
     def load(self):
         Cuba = Entity("Cuba", "Place", lon=25, lat=50)
         Rusia = Entity("Rusia", "Place", lon=90, lat=40)
