@@ -62,7 +62,7 @@ class GraphStorage(Storage):
     """
 
     def __init__(self):
-        self.driver = GraphDatabase.driver(url, auth = basic_auth(username, password))
+        self.driver = GraphDatabase.driver(url, auth=basic_auth(username, password))
 
     def close(self):
         self.driver.close()
@@ -84,12 +84,16 @@ class GraphStorage(Storage):
     def create_entity(self, entity: Entity):
         with self.driver.session() as session:
             attrs = entity.attrs.copy()
-            result = session.read_transaction(self._find_node_by, entity.type, name=entity.name)
+            result = session.read_transaction(
+                self._find_node_by, entity.type, name=entity.name
+            )
 
             if len(result) > 0:
                 return result[0]
 
-            result = session.write_transaction(self._create_node, type=entity.type, name=entity.name, **attrs)
+            result = session.write_transaction(
+                self._create_node, type=entity.type, name=entity.name, **attrs
+            )
             return result[0]
 
     def create_relationship(self, relation: Relation):
@@ -387,7 +391,12 @@ class GraphQueryResolver(QueryResolver):
         for entity in query.entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
-            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e2.name: entity.name})
+                .get(e1, r, e2)
+            ):
                 relation = self._build_relation_from_triplet(t)
 
                 if relation.label == "is_a":
@@ -405,7 +414,6 @@ class GraphQueryResolver(QueryResolver):
             ):
                 relation = self._build_relation_from_triplet(t)
                 yield relation
-
 
     def resolve_match(self, query: MatchQuery) -> Iterable[Relation]:
         entities = list(query.entities)
@@ -461,7 +469,7 @@ class GraphQueryResolver(QueryResolver):
             ]
 
             for t in q.get(e0, r0, e1):
-                relation = self._build_relation_from_triplet((t[0],t[1][0],t[2]))
+                relation = self._build_relation_from_triplet((t[0], t[1][0], t[2]))
                 yield relation
 
 
