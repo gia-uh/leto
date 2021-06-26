@@ -10,3 +10,6 @@ pull-safe:
 
 clean-neo4j:
 	sudo rm -rf data/neo4j
+
+format:
+	black leto

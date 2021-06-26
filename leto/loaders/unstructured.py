@@ -14,7 +14,7 @@ class Language(str, enum.Enum):
 
 
 class SVOFromText(Loader):
-    def __init__(self, text:Text, language:Language) -> None:
+    def __init__(self, text: Text, language: Language) -> None:
         self.text = text
         self.language = language
 

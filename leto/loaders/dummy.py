@@ -9,6 +9,7 @@ class ManualLoader(Loader):
 
     entity[:type] - relation - entity[:type]
     """
+
     def __init__(self, tuples: Text) -> None:
         self.tuples = tuples
 
@@ -39,7 +40,7 @@ class ManualLoader(Loader):
 class ExampleLoader(Loader):
     """Loads an example dataset where you can try the example queries.
 
-*⚠️ This modifies the database permanently!*
+    *⚠️ This modifies the database permanently!*
     """
 
     def load(self):

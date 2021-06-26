@@ -9,6 +9,7 @@ import graphviz
 
 import plotly.express as px
 
+
 class Visualization:
     def __init__(self, title: str, score: float, run: Callable) -> None:
         self.score = score
@@ -62,16 +63,28 @@ class GraphVisualizer(Visualizer):
 
                     graph.node(e.name, fillcolor=color, style="filled")
 
-                graph.edge(tuple.entity_from.name, tuple.entity_to.name, label=tuple.label)
+                graph.edge(
+                    tuple.entity_from.name, tuple.entity_to.name, label=tuple.label
+                )
 
             for e in main_entities:
                 for attr, value in e.attrs.items():
-                    graph.node(f"{attr}={value}", shape="rectangle", fillcolor="yellow", style="filled")
+                    graph.node(
+                        f"{attr}={value}",
+                        shape="rectangle",
+                        fillcolor="yellow",
+                        style="filled",
+                    )
                     graph.edge(e.name, f"{attr}={value}")
 
             st.write(graph)
 
-        return Visualization(title="🔗 Entity graph", score=max(0.1, math.log2(len(response))), run=visualization)
+        return Visualization(
+            title="🔗 Entity graph",
+            score=max(0.1, math.log2(len(response))),
+            run=visualization,
+        )
+
 
 class MapVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
@@ -83,7 +96,9 @@ class MapVisualizer(Visualizer):
         for tuple in response:
             for e in [tuple.entity_from, tuple.entity_to]:
                 if "lon" in e.attrs:
-                    mapeable.append(dict(name=e.name, lat=float(e.lat), lon=float(e.lon)))
+                    mapeable.append(
+                        dict(name=e.name, lat=float(e.lat), lon=float(e.lon))
+                    )
 
         if not mapeable:
             return Visualization.Empty()
@@ -93,7 +108,10 @@ class MapVisualizer(Visualizer):
         def visualization():
             st.map(df)
 
-        return Visualization(title="🗺️ Map", score=len(df) / len(response), run=visualization)
+        return Visualization(
+            title="🗺️ Map", score=len(df) / len(response), run=visualization
+        )
+
 
 class CountVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]):
@@ -127,20 +145,16 @@ class CountVisualizer(Visualizer):
                 pass
 
         def visualization():
-            def bars(data: pd.Series,col):
-                pd.set_option('plotting.backend', 'plotly')
+            def bars(data: pd.Series, col):
+                pd.set_option("plotting.backend", "plotly")
                 st.plotly_chart(data[col].plot.hist())
 
-            def pie(data: pd.Series,col):
-                st.plotly_chart(px.pie(df,col))
+            def pie(data: pd.Series, col):
+                st.plotly_chart(px.pie(df, col))
 
-            switch_paint={
-                       'int64':bars,
-                       'float64':bars,
-                       'object':pie
-                       }
+            switch_paint = {"int64": bars, "float64": bars, "object": pie}
 
             for col in df.columns:
-                switch_paint[str(df.dtypes[col])](df,col)
+                switch_paint[str(df.dtypes[col])](df, col)
 
         return Visualization(title="📊 chart", score=len(df), run=visualization)

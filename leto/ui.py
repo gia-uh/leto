@@ -4,7 +4,13 @@ import streamlit as st
 from .loaders import get_loaders
 from .storage import Storage, get_storages
 from .query import QueryParser, QueryResolver, get_parsers
-from .visualization import DummyVisualizer, Visualizer, MapVisualizer, GraphVisualizer, CountVisualizer
+from .visualization import (
+    DummyVisualizer,
+    Visualizer,
+    MapVisualizer,
+    GraphVisualizer,
+    CountVisualizer,
+)
 from io import StringIO
 
 
@@ -19,7 +25,12 @@ def bootstrap():
         st.write(f"Current size: {storage.size} tuples")
 
     resolver: QueryResolver = storage.get_query_resolver()
-    visualizers: List[Visualizer] = [DummyVisualizer(), MapVisualizer(), GraphVisualizer(), CountVisualizer()]
+    visualizers: List[Visualizer] = [
+        DummyVisualizer(),
+        MapVisualizer(),
+        GraphVisualizer(),
+        CountVisualizer(),
+    ]
 
     main, side = st.beta_columns((2, 1))
 
@@ -28,7 +39,9 @@ def bootstrap():
             load_data(storage)
 
         with st.beta_expander("❓ Example queries", True):
-            st.info("If you have loaded the example data (👆 run **ExampleLoader**), you can try some of these queries to see an example of LETO's functionality.")
+            st.info(
+                "If you have loaded the example data (👆 run **ExampleLoader**), you can try some of these queries to see an example of LETO's functionality."
+            )
             example = example_queries()
 
     with st.sidebar:
@@ -65,7 +78,9 @@ def bootstrap():
                 st.error("😨 No data was found to answer that query!")
                 st.stop()
 
-            visualizations = [visualizer.visualize(query, response) for visualizer in visualizers]
+            visualizations = [
+                visualizer.visualize(query, response) for visualizer in visualizers
+            ]
             visualizations = [v for v in visualizations if v.valid()]
             visualizations.sort(key=lambda v: v.score, reverse=True)
 
