@@ -1,6 +1,6 @@
 import abc
 import math
-from leto.query import Query, WhereQuery
+from leto.query import MatchQuery, Query, WhereQuery
 from leto.model import Relation
 from typing import Callable, List
 import pandas as pd
@@ -44,13 +44,26 @@ class DummyVisualizer(Visualizer):
 
 
 class GraphVisualizer(Visualizer):
-    def visualize(self, query: Query, response: List[Relation]) -> Visualization:
+    def visualize(self, query: MatchQuery, response: List[Relation]) -> Visualization:
+        if not isinstance(query, MatchQuery):
+            return Visualization.Empty()
+
         def visualization():
-            graph = graphviz.Digraph(engine="twopi")
+            graph = graphviz.Digraph()
+
+            entities = set(e.name for e in query.entities)
+
+            print(entities)
 
             for tuple in response:
-                graph.node(tuple.entity_from.name)
-                graph.node(tuple.entity_to.name)
+                for e in [tuple.entity_from, tuple.entity_to]:
+                    color = "white"
+
+                    if e.name in entities:
+                        color = "green"
+
+                    graph.node(e.name, fillcolor=color, style="filled")
+
                 graph.edge(tuple.entity_from.name, tuple.entity_to.name, label=tuple.label)
 
             st.write(graph)

@@ -343,10 +343,27 @@ class GraphQueryResolver(QueryResolver):
 
 
     def resolve_match(self, query: MatchQuery) -> Iterable[Relation]:
+        entities = list(query.entities)
+
+        # Expand entities to contain instances of is_a
         for entity in query.entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
+            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+
+                if relation.label == "is_a":
+                    yield relation
+                    entities.append(relation.entity_from)
+
+        for entity in entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
             for t in Q(self.storage).match(e1[r] >> e2).where({e1.name: entity.name}).get(e1, r, e2):
+                relation = self._build_relation_from_triplet(t)
+                yield relation
+
+            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
                 relation = self._build_relation_from_triplet(t)
                 yield relation
 
