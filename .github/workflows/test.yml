@@ -22,3 +22,6 @@ jobs:
 
       - name: Check format
         run: black --check leto/
+
+      - name: Run tests
+        run: make test
