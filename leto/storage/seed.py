@@ -8,17 +8,22 @@ from leto.loaders.unstructured import Language
 import coreferee
 import subprocess
 
-def get_coreference_resolved_docs(nlp:spacy.Language, docs: Iterable[str]):
+
+def get_coreference_resolved_docs(nlp: spacy.Language, docs: Iterable[str]):
     updated_docs = []
     for doc in nlp.pipe(docs):
         new_doc = []
         for token in doc:
             tok = doc._.coref_chains.resolve(token) or token
-            tok_text = ' and '.join([t.text for t in tok]) if(isinstance(tok, list)) else tok.text
+            tok_text = (
+                " and ".join([t.text for t in tok])
+                if (isinstance(tok, list))
+                else tok.text
+            )
             tok_text += token.whitespace_
             new_doc.append(tok_text)
 
-        updated_docs.append(''.join(new_doc))
+        updated_docs.append("".join(new_doc))
     return updated_docs
 
 
@@ -27,16 +32,22 @@ def _seed_content(content: str, language: Language):
     nlp = get_model(language)
 
     ready_content = content
-    if (language is Language.en): #download english model
+    if language is Language.en:  # download english model
         subprocess.run(["python3", "-m", "coreferee", "install", "en"])
-        nlp.add_pipe('coreferee')
+        nlp.add_pipe("coreferee")
         ready_content = get_coreference_resolved_docs(nlp, [content])[0]
 
     for triplet in get_svo_tripplets(nlp, ready_content):
-        subject_str = " ".join(map(lambda x: str(x).strip().lower(), triplet.subject)).strip()
-        verb_str = "_".join(map(lambda x: str(x.lemma_.strip().lower()), triplet.verb)).strip()
-        object_str = " ".join(map(lambda x: str(x).strip().lower(), triplet.object)).strip()
-        
+        subject_str = " ".join(
+            map(lambda x: str(x).strip().lower(), triplet.subject)
+        ).strip()
+        verb_str = "_".join(
+            map(lambda x: str(x.lemma_.strip().lower()), triplet.verb)
+        ).strip()
+        object_str = " ".join(
+            map(lambda x: str(x).strip().lower(), triplet.object)
+        ).strip()
+
         subject_types = set(map(lambda x: x.ent_type_, triplet.subject))
         object_types = set(map(lambda x: x.ent_type_, triplet.object))
 
@@ -77,15 +88,17 @@ def _seed_content(content: str, language: Language):
                 print("Stored relation:", relation, sep=" ")
             except:
                 pass
-        
-def seed_from_wikipedia(wikipedia_page_title:str, language:Language = Language.en):
+
+
+def seed_from_wikipedia(wikipedia_page_title: str, language: Language = Language.en):
     if language is Language.es:
         wikipedia.set_lang("es")
-        
+
     page = wikipedia.page(wikipedia_page_title)
     _seed_content(page.content, language)
-    
-def query_wikipedia(query:str) :
+
+
+def query_wikipedia(query: str):
     return wikipedia.search(query)
 
 
