@@ -3,7 +3,6 @@ black==21.6b0
 click==7.1.2
 graphviz==0.13.2
 networkx==2.4
-numpy==1.18.2
 pandas==1.0.3
 pydot==1.4.1
 PyYAML==5.3.1
