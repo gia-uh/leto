@@ -2,6 +2,7 @@ import os
 import functools
 import typing
 import spacy
+from pathlib import Path
 
 import streamlit as st
 
@@ -40,7 +41,7 @@ def visitor(arg: str):
     return wrap
 
 
-data_directory = "/home/coder/leto/data/models"
+data_directory = str(Path(__file__).parent.parent / "data" / "models")
 
 
 def get_model(name: str = "en_core_web_sm") -> spacy.Language:
