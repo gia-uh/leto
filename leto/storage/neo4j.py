@@ -2,17 +2,26 @@ from abc import ABC, abstractmethod
 import os
 from typing import Iterable, Tuple
 from leto.model import Entity, Relation
-from leto.query import Query, QueryResolver, WhatQuery, WhereQuery, WhichQuery, WhoQuery, MatchQuery
+from leto.query import (
+    Query,
+    QueryResolver,
+    WhatQuery,
+    WhereQuery,
+    WhichQuery,
+    WhoQuery,
+    HowManyQuery,
+    MatchQuery,
+)
 from leto.storage import Storage
-from pprint import pprint
 
 from neo4j import GraphDatabase, basic_auth
+
+import streamlit as st
 
 
 username = os.getenv("NEO4J_USER", "neo4j")
 password = os.getenv("NEO4J_PASSWORD", "12345678")
 neo4jVersion = os.getenv("NEO4J_VERSION", "")
-database = os.getenv("NEO4J_DATABASE", "neo4j")
 port = os.getenv("PORT", 7687)
 url = os.getenv("NEO4J_URI", f"bolt://neo4j:{port}")
 
@@ -52,8 +61,8 @@ class GraphStorage(Storage):
     ```
     """
 
-    def __init__(self, uri = url, user = username, password = password):
-        self.driver = GraphDatabase.driver(uri, auth = basic_auth(user, password))
+    def __init__(self):
+        self.driver = GraphDatabase.driver(url, auth=basic_auth(username, password))
 
     def close(self):
         self.driver.close()
@@ -74,38 +83,46 @@ class GraphStorage(Storage):
 
     def create_entity(self, entity: Entity):
         with self.driver.session() as session:
-            attrs = entity.__dict__.copy()
-            attrs.pop("type")
-            attrs.pop("name")
-            result = session.read_transaction(self._find_node_by, entity.type, name=entity.name)
+            attrs = entity.attrs.copy()
+            result = session.read_transaction(
+                self._find_node_by, entity.type, name=entity.name
+            )
 
             if len(result) > 0:
                 return result[0]
 
-            result = session.write_transaction(self._create_node, type=entity.type, name=entity.name, **attrs)
+            result = session.write_transaction(
+                self._create_node, type=entity.type, name=entity.name, **attrs
+            )
             return result[0]
 
-    def create_relationship(self, relation:Relation):
+    def create_relationship(self, relation: Relation):
         with self.driver.session() as session:
             # Write transactions allow the driver to handle retries and transient errors
-            result = session.write_transaction(self._create_relationship,
+            result = session.write_transaction(
+                self._create_relationship,
                 relation.label,
-                relation.entity_from.type, {"name":relation.entity_from.name} ,
-                relation.entity_to.type, {"name":relation.entity_to.name})
+                relation.entity_from.type,
+                {"name": relation.entity_from.name},
+                relation.entity_to.type,
+                {"name": relation.entity_to.name},
+            )
 
-    def run_read_query(self, query:str, data_reader):
+    def run_read_query(self, query: str, data_reader):
         with self.driver.session() as session:
-            results = session.read_transaction(self._run_query, query=query, data_reader=data_reader)
-            if (len(results) == 0):
+            results = session.read_transaction(
+                self._run_query, query=query, data_reader=data_reader
+            )
+            if len(results) == 0:
                 print("No data was found")
             return results
 
-    def run_write_query(self, query:str):
+    def run_write_query(self, query: str):
         with self.driver.session() as session:
             return session.write_transaction(self._run_query, query=query)
 
     @staticmethod
-    def _run_query(tx, query:str, data_reader):
+    def _run_query(tx, query: str, data_reader):
         result = tx.run(query)
         results = []
         for record in result:
@@ -113,35 +130,42 @@ class GraphStorage(Storage):
         return results
 
     @staticmethod
-    def _find_node_by(tx, node_type:str, where:str = None, **args):
-        if (not where):
-            where = " AND ".join([f'node.{arg[0]} = "{arg[1]}"' for arg in args.items()])
+    def _find_node_by(tx, node_type: str, where: str = None, **args):
+        if not where:
+            where = " AND ".join(
+                [f'node.{arg[0]} = "{arg[1]}"' for arg in args.items()]
+            )
 
-        query = (
-            f"MATCH (node:{node_type}) "
-            f"WHERE {where} "
-            f"RETURN DISTINCT node"
-        )
+        query = f"MATCH (node:{node_type}) " f"WHERE {where} " f"RETURN DISTINCT node"
 
         result = tx.run(query)
         return [record["node"]._properties for record in result]
 
     @staticmethod
-    def _create_node(tx, type:str, **args):
-        properties = ", ".join([f'{arg[0]}:{repr(arg[1])}' for arg in args.items()])
+    def _create_node(tx, type: str, **args):
+        properties = ", ".join([f"{arg[0]}:{repr(arg[1])}" for arg in args.items()])
 
-        query = (
-            f"CREATE (node:{type} {{{properties}}}) "
-            f"RETURN node"
-        )
+        query = f"CREATE (node:{type} {{{properties}}}) " f"RETURN node"
 
         result = tx.run(query)
         return [record["node"]._properties for record in result]
 
     @staticmethod
-    def _create_relationship(tx, relationship_name:str, nodeType1:str, properties1:dict, node_type2:str, properties2:dict, **args):
-        where1 = " AND ".join([f'p1.{arg[0]} = "{arg[1]}"' for arg in properties1.items()])
-        where2 = " AND ".join([f'p2.{arg[0]} = "{arg[1]}"' for arg in properties2.items()])
+    def _create_relationship(
+        tx,
+        relationship_name: str,
+        nodeType1: str,
+        properties1: dict,
+        node_type2: str,
+        properties2: dict,
+        **args,
+    ):
+        where1 = " AND ".join(
+            [f'p1.{arg[0]} = "{arg[1]}"' for arg in properties1.items()]
+        )
+        where2 = " AND ".join(
+            [f'p2.{arg[0]} = "{arg[1]}"' for arg in properties2.items()]
+        )
         properties = ", ".join([f'{arg[0]}:"{arg[1]}"' for arg in args.items()])
 
         match_query = (
@@ -165,6 +189,7 @@ class GraphStorage(Storage):
     def get_query_resolver(self) -> QueryResolver:
         return GraphQueryResolver(self)
 
+
 class GraphQueryResolver(QueryResolver):
     """
     Usage:
@@ -180,17 +205,21 @@ class GraphQueryResolver(QueryResolver):
     def __init__(self, storage: GraphStorage) -> None:
         self.storage = storage
 
-    def _make_triplet_reader(self, entity_from_tag:str, relation_tag:str, entity_to_tag:str):
+    def _make_triplet_reader(
+        self, entity_from_tag: str, relation_tag: str, entity_to_tag: str
+    ):
         def read_triplet_result(record):
             entity_from = record[entity_from_tag]
             entity_to = record[entity_to_tag]
             relationship = record[relation_tag]
             return (entity_from, relationship, entity_to)
+
         return read_triplet_result
 
     def _make_single_reader(self, entity_tag):
         def read_single_result(record):
             return record[entity_tag]
+
         return read_single_result
 
     def _build_entity_from_node(self, node) -> Entity:
@@ -207,41 +236,50 @@ class GraphQueryResolver(QueryResolver):
         """
         entity_from = self._build_entity_from_node(triplet[0])
         entity_to = self._build_entity_from_node(triplet[2])
-        return Relation(triplet[1].type, entity_from, entity_to, **triplet[1]._properties)
+        return Relation(
+            triplet[1].type, entity_from, entity_to, **triplet[1]._properties
+        )
 
-    def _resolve_triplet_query(self, entity_name:str, relation:str = None, entity_type = None):
+    def _resolve_triplet_query(
+        self, entity_name: str, relation: str = None, entity_type=None
+    ):
         cypher_query = (
             f'MATCH (e{"" if entity_type is None else f":{entity_type}"})-[r{"" if relation is None else f":{relation}"}]->(e2)'
             f'WHERE e.name = "{entity_name}"'
-            f'RETURN e, r, e2'
+            f"RETURN e, r, e2"
         )
-        triplets = self.storage.run_read_query(cypher_query, data_reader = self._make_triplet_reader("e","r","e2"))
+        triplets = self.storage.run_read_query(
+            cypher_query, data_reader=self._make_triplet_reader("e", "r", "e2")
+        )
         results = []
         for triplet in triplets:
             results.append(self._build_relation_from_triplet(triplet))
         return results
 
-    def _resolve_single_query(self, entity_name:str, entity_type = None):
+    def _resolve_single_query(self, entity_name: str, entity_type=None):
         cypher_query = f'MATCH (e{"" if entity_type is None else f":{entity_type}"}) WHERE e.name = "{entity_name}" RETURN e'
-        singles = self.storage.run_read_query(cypher_query, data_reader = self._make_single_reader("e"))
+        singles = self.storage.run_read_query(
+            cypher_query, data_reader=self._make_single_reader("e")
+        )
         results = []
         for single in singles:
             results.append(self._build_entity_from_node(single))
         return results
 
-    def resolve(self, query: Query) -> Iterable[Relation]:
+    def _resolve_query(self, query: Query) -> Iterable[Relation]:
         switch = {
             WhoQuery: self.resolve_who,
             WhatQuery: self.resolve_what,
             WhichQuery: self.resolve_which,
             MatchQuery: self.resolve_match,
             WhereQuery: self.resolve_where,
+            HowManyQuery: self.resolve_howmany,
         }
 
         try:
             return switch[type(query)](query)
         except Exception as e:
-            #TODO: better handle resolve error
+            # TODO: better handle resolve error
             raise e
 
     def resolve_where(self, query: WhereQuery) -> Iterable[Relation]:
@@ -251,7 +289,12 @@ class GraphQueryResolver(QueryResolver):
         for entity in query.entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
-            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e2.name: entity.name})
+                .get(e1, r, e2)
+            ):
                 relation = self._build_relation_from_triplet(t)
 
                 if relation.label == "is_a":
@@ -262,14 +305,18 @@ class GraphQueryResolver(QueryResolver):
         for entity in entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
-            for t in Q(self.storage).match(e1[r] >> e2).where({e1.name: entity.name}).get(e1, r, e2):
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e1.name: entity.name})
+                .get(e1, r, e2)
+            ):
                 relation = self._build_relation_from_triplet(t)
 
                 if relation.entity_to.type != "Place":
                     continue
 
-                if relation.label in query.terms:
-                    yield relation
+                yield relation
 
     def resolve_who(self, query: WhoQuery) -> Iterable[Relation]:
         entities = list(query.entities)
@@ -278,7 +325,12 @@ class GraphQueryResolver(QueryResolver):
         for entity in query.entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
-            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e2.name: entity.name})
+                .get(e1, r, e2)
+            ):
                 relation = self._build_relation_from_triplet(t)
 
                 if relation.label == "is_a":
@@ -289,7 +341,12 @@ class GraphQueryResolver(QueryResolver):
         for entity in entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
-            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e2.name: entity.name})
+                .get(e1, r, e2)
+            ):
                 relation = self._build_relation_from_triplet(t)
 
                 if relation.label in query.terms:
@@ -302,7 +359,12 @@ class GraphQueryResolver(QueryResolver):
         for entity in query.entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
-            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e2.name: entity.name})
+                .get(e1, r, e2)
+            ):
                 relation = self._build_relation_from_triplet(t)
 
                 if relation.label == "is_a":
@@ -313,32 +375,45 @@ class GraphQueryResolver(QueryResolver):
         for entity in entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
-            for t in Q(self.storage).match(e1[r] >> e2).where({e1.name: entity.name}).get(e1, r, e2):
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e1.name: entity.name})
+                .get(e1, r, e2)
+            ):
                 relation = self._build_relation_from_triplet(t)
 
                 if relation.label in query.terms:
                     yield relation
 
-
     def resolve_what(self, query: WhatQuery) -> Iterable[Relation]:
-        # Solving for e1
-        for entity in query.entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in Q(self.storage).match(e1[r] >> e2).where({e1.name: entity.name}).get(e1, r, e2):
-                relation = self._build_relation_from_triplet(t)
-                yield relation
-
         # Solving when e1 is_a what they are asking
         for entity in query.entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
-            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e2.name: entity.name})
+                .get(e1, r, e2)
+            ):
                 relation = self._build_relation_from_triplet(t)
 
                 if relation.label == "is_a":
                     yield relation
 
+        # Solving for e1
+        for entity in query.entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e1.name: entity.name})
+                .get(e1, r, e2)
+            ):
+                relation = self._build_relation_from_triplet(t)
+                yield relation
 
     def resolve_match(self, query: MatchQuery) -> Iterable[Relation]:
         entities = list(query.entities)
@@ -347,7 +422,12 @@ class GraphQueryResolver(QueryResolver):
         for entity in query.entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
-            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e2.name: entity.name})
+                .get(e1, r, e2)
+            ):
                 relation = self._build_relation_from_triplet(t)
 
                 if relation.label == "is_a":
@@ -357,12 +437,39 @@ class GraphQueryResolver(QueryResolver):
         for entity in entities:
             e1, r, e2 = Q.vars("e1 r e2")
 
-            for t in Q(self.storage).match(e1[r] >> e2).where({e1.name: entity.name}).get(e1, r, e2):
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e1.name: entity.name})
+                .get(e1, r, e2)
+            ):
                 relation = self._build_relation_from_triplet(t)
                 yield relation
 
-            for t in Q(self.storage).match(e1[r] >> e2).where({e2.name: entity.name}).get(e1, r, e2):
+        for entity in entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e2.name: entity.name})
+                .get(e1, r, e2)
+            ):
                 relation = self._build_relation_from_triplet(t)
+                yield relation
+
+    def resolve_howmany(self, query: HowManyQuery) -> Iterable[Relation]:
+        for entity in query.entities:
+
+            e0, r0, e1, r, e2 = Q.vars("e0 r0 e1 r e2")
+
+            q = Q(self.storage)
+            q._query_body = [
+                f"MATCH (e0)-[r0:is_a*1..]->(e1)-[r:has_property]->(e2:PROP) WHERE e1.name = {repr(entity.name)}"
+            ]
+
+            for t in q.get(e0, r0, e1):
+                relation = self._build_relation_from_triplet((t[0], t[1][0], t[2]))
                 yield relation
 
 
@@ -375,7 +482,7 @@ class Q:
         self._query_body.append(Q.Match(path))
         return self
 
-    def where(self, kwargs:dict) -> "Q":
+    def where(self, kwargs: dict) -> "Q":
         self._query_body.append(Q.Where(kwargs))
         return self
 
@@ -392,12 +499,12 @@ class Q:
         return "\n".join(str(q) for q in self._query_body)
 
     @staticmethod
-    def vars(names:str) -> "Tuple[Q.Var]":
+    def vars(names: str) -> "Tuple[Q.Var]":
         for name in names.split():
             yield Q.Var(name)
 
     class Var:
-        def __init__(self, name:str) -> None:
+        def __init__(self, name: str) -> None:
             self._name = name
 
         def __getitem__(self, other) -> "Q.HalfPath":
@@ -438,7 +545,9 @@ class Q:
             self.kwargs = kwargs
 
         def __str__(self) -> str:
-            return "WHERE " + " AND ".join(f"{key} = {repr(value)}" for key,value in self.kwargs.items())
+            return "WHERE " + " AND ".join(
+                f"{key} = {repr(value)}" for key, value in self.kwargs.items()
+            )
 
     class Return:
         def __init__(self, *items) -> None:

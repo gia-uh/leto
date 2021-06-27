@@ -2,11 +2,12 @@ import os
 import functools
 import typing
 import spacy
+from pathlib import Path
 
 import streamlit as st
 
 
-def visitor(arg:str):
+def visitor(arg: str):
     def wrap(fn):
         implementations = {}
         base_type = typing.get_type_hints(fn)[arg]
@@ -40,10 +41,10 @@ def visitor(arg:str):
     return wrap
 
 
-data_directory = "/home/coder/leto/data/models"
+data_directory = str(Path(__file__).parent.parent / "data" / "models")
 
 
-def get_model(name:str="en_core_web_sm")-> spacy.Language:
+def get_model(name: str = "en_core_web_sm") -> spacy.Language:
     """Get an spacy language model from different sources. First, tryes to load
     the model from disk, if fails, then load and install from original repo.
 
@@ -60,13 +61,14 @@ def get_model(name:str="en_core_web_sm")-> spacy.Language:
         print("model loading", end="", flush=True)
         model = get_local_model(name)
         print(" done")
-        if (not model):
+        if not model:
             model = get_online_model(name)
         return model
     except Exception as e:
         raise e
 
-def get_local_model(name:str) -> spacy.Language:
+
+def get_local_model(name: str) -> spacy.Language:
     """Gets Language model and data from disk
 
     Args:
@@ -80,7 +82,8 @@ def get_local_model(name:str) -> spacy.Language:
     except:
         return None
 
-def save_model(model: spacy.Language, name:str):
+
+def save_model(model: spacy.Language, name: str):
     """Saves Language model data to disk
 
     Args:
@@ -90,7 +93,10 @@ def save_model(model: spacy.Language, name:str):
     config = model.config
     model.to_disk(os.path.join(data_directory, name))
 
-def get_online_model(name:str, save_to_local:bool = True, pythonNick:str = "python") -> spacy.Language:
+
+def get_online_model(
+    name: str, save_to_local: bool = True, pythonNick: str = "python"
+) -> spacy.Language:
     """Load and install spacy language model from original repo. If save_to_local then save to disk after load.
 
     Args:
@@ -103,6 +109,11 @@ def get_online_model(name:str, save_to_local:bool = True, pythonNick:str = "pyth
     """
     os.system(f"{pythonNick} -m spacy download {name}")
     nlp = spacy.load(name)
-    if (save_to_local):
+    if save_to_local:
         save_model(nlp, name)
     return nlp
+
+
+class Text(str):
+    def __new__(cls, *args, **kwargs):
+        return cls.__new__(*args, **kwargs)
