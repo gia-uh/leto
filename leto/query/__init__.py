@@ -13,8 +13,8 @@ class Query(abc.ABC):
 
 @dataclass
 class MatchQuery(Query):
-    entities: List[Entity] = None
-    terms: List[str] = None
+    entities: List[Entity]
+    terms: List[str]
 
 
 @dataclass
