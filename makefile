@@ -7,6 +7,9 @@ image:
 shell:
 	docker-compose -f docker/docker-compose.yml run leto bash
 
+pull:
+	docker pull letoai/leto:latest
+
 pull-safe:
 	docker pull docker.uclv.cu/letoai/leto:latest
 	docker tag docker.uclv.cu/letoai/leto:latest letoai/leto:latest
