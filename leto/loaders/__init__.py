@@ -13,5 +13,6 @@ def get_loaders() -> List[Loader]:
     from .unstructured import SVOFromFile, SVOFromText
     from .dummy import ManualLoader, ExampleLoader
     from .structured import CsvLoader
+    from .wikipedia import WikipediaLoader
 
-    return [ExampleLoader, ManualLoader, CsvLoader, SVOFromFile, SVOFromText]
+    return [ExampleLoader, ManualLoader, CsvLoader, SVOFromFile, SVOFromText, WikipediaLoader]

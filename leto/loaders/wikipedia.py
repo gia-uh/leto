@@ -3,10 +3,9 @@ import spacy
 import wikipedia
 from leto.model import Entity, Relation
 from leto.loaders.unstructured import get_svo_tripplets, get_model
-from leto.storage.neo4j import GraphStorage
 from leto.loaders.unstructured import Language
-import coreferee
 import subprocess
+from leto.loaders import Loader
 
 
 def get_coreference_resolved_docs(nlp: spacy.Language, docs: Iterable[str]):
@@ -27,8 +26,23 @@ def get_coreference_resolved_docs(nlp: spacy.Language, docs: Iterable[str]):
     return updated_docs
 
 
+class WikipediaLoader(Loader):
+    """
+    Load all the content from a specific Wikipedia page.
+    """
+    def __init__(self, query: str, language: Language) -> None:
+        self.query = query
+        self.language = language
+
+    def load(self):
+        if self.language is Language.es:
+            wikipedia.set_lang("es")
+
+        page = wikipedia.page(self.query)
+        return _seed_content(page.content, self.language)
+
+
 def _seed_content(content: str, language: Language):
-    graph_db = GraphStorage()
     nlp = get_model(language)
 
     ready_content = content
@@ -83,23 +97,7 @@ def _seed_content(content: str, language: Language):
                     else "THING",
                 )
             relation = Relation(verb_str, subject_entity, object_entity)
-            try:
-                graph_db.store(relation)
-                print("Stored relation:", relation, sep=" ")
-            except:
-                pass
-
-
-def seed_from_wikipedia(wikipedia_page_title: str, language: Language = Language.en):
-    if language is Language.es:
-        wikipedia.set_lang("es")
-
-    page = wikipedia.page(wikipedia_page_title)
-    _seed_content(page.content, language)
-
-
-def query_wikipedia(query: str):
-    return wikipedia.search(query)
+            yield relation
 
 
 """

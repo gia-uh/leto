@@ -107,7 +107,10 @@ def load_data(storage):
 
         for i, relation in enumerate(loader.load()):
             progress.warning(f"⚙️ Loading {i+1} tuples...")
-            storage.store(relation)
+            try:
+                storage.store(relation)
+            except Exception as e:
+                print(e)
 
         progress.success(f"🥳 Succesfully loaded {i+1} tuples!")
 
