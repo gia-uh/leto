@@ -1,4 +1,5 @@
 import abc
+import json
 import math
 from leto.query import MatchQuery, Query, WhatQuery, WhereQuery, WhoQuery, HowManyQuery
 from leto.model import Relation
@@ -6,6 +7,7 @@ from typing import Callable, List
 import pandas as pd
 import streamlit as st
 import graphviz
+import pydeck as pdk
 
 import plotly.express as px
 
@@ -87,6 +89,10 @@ class GraphVisualizer(Visualizer):
 
 
 class MapVisualizer(Visualizer):
+    def __init__(self) -> None:
+        with open("/home/coder/leto/data/countries.geo.json") as fp:
+            self.data = json.load(fp)["features"]
+
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
         if not isinstance(query, (WhereQuery, WhatQuery)):
             return Visualization.Empty()
@@ -103,10 +109,27 @@ class MapVisualizer(Visualizer):
         if not mapeable:
             return Visualization.Empty()
 
+        regions = set(d['name'] for d in mapeable)
         df = pd.DataFrame(mapeable).set_index("name")
 
         def visualization():
-            st.map(df)
+            data = [feature for feature in self.data if feature["properties"]["name"] in regions]
+
+            geojson = pdk.Layer(
+                "GeoJsonLayer",
+                data,
+                opacity=0.8,
+                stroked=False,
+                filled=True,
+                extruded=True,
+                wireframe=True,
+                get_elevation=1,
+                get_fill_color=[255, 255, 255],
+                get_line_color=[255, 255, 255],
+            )
+            map = pdk.Deck(layers=[geojson])
+
+            st.pydeck_chart(map)
 
         return Visualization(
             title="🗺️ Map", score=len(df) / len(response), run=visualization

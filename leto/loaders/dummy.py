@@ -55,8 +55,8 @@ class ExampleLoader(Loader):
         Cuba = Entity("Cuba", "Place", lon=-77.78, lat=21.52)
         yield Relation("is_a", Cuba, Country)
 
-        Rusia = Entity("Rusia", "Place", lon=105.31, lat=61.52)
-        yield Relation("is_a", Rusia, Country)
+        Russia = Entity("Russia", "Place", lon=105.31, lat=61.52)
+        yield Relation("is_a", Russia, Country)
 
         Revolution = Entity("Revolution", "Event")
 
@@ -66,7 +66,7 @@ class ExampleLoader(Loader):
 
         RusianRevolution = Entity("October Revolution", "Event", date="1918-11-17")
         yield Relation("is_a", RusianRevolution, Revolution)
-        yield Relation("has_location", RusianRevolution, Rusia)
+        yield Relation("has_location", RusianRevolution, Russia)
 
         FidelCastro = Entity("Fidel Castro", "Person", birth_date="1913-08-13")
         yield Relation("lead", FidelCastro, CubanRevolution)
