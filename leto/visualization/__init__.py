@@ -1,19 +1,26 @@
 import abc
 import json
 import math
-
-from leto.query import MatchQuery, Query, WhatQuery, WhereQuery, WhoQuery, HowManyQuery, PredictQuery
-from leto.model import Relation
 from typing import Callable, List
-import pandas as pd
-import streamlit as st
-import graphviz
-import pydeck as pdk
-import plotly.express as px
 
-from sklearn.linear_model import LogisticRegression
-from sklearn.linear_model import LinearRegression
+import altair as alt
+import graphviz
+import pandas as pd
+import plotly.express as px
+import pydeck as pdk
+import streamlit as st
+from leto.model import Relation
+from leto.query import (
+    HowManyQuery,
+    MatchQuery,
+    PredictQuery,
+    Query,
+    WhatQuery,
+    WhereQuery,
+    WhoQuery,
+)
 from sklearn.feature_extraction import DictVectorizer
+from sklearn.linear_model import LinearRegression, LogisticRegression
 
 
 class Visualization:
@@ -113,11 +120,15 @@ class MapVisualizer(Visualizer):
         if not mapeable:
             return Visualization.Empty()
 
-        regions = set(d['name'] for d in mapeable)
+        regions = set(d["name"] for d in mapeable)
         df = pd.DataFrame(mapeable).set_index("name")
 
         def visualization():
-            data = [feature for feature in self.data if feature["properties"]["name"] in regions]
+            data = [
+                feature
+                for feature in self.data
+                if feature["properties"]["name"] in regions
+            ]
 
             geojson = pdk.Layer(
                 "GeoJsonLayer",
@@ -153,13 +164,12 @@ class CountVisualizer(Visualizer):
 
         for R in response:
             if R.label == "is_a" and R.entity_to.name in entities:
-                attrs = { attr:R.entity_from.get(attr) for attr in attributes }
+                attrs = {attr: R.entity_from.get(attr) for attr in attributes}
                 value = R.get(field)
                 attrs[field] = R.get(field)
 
                 if value is not None:
-                    data.append(dict(name=R.entity_from.name,**attrs))
-
+                    data.append(dict(name=R.entity_from.name, **attrs))
 
         if not data:
             return Visualization.Empty()
@@ -215,14 +225,19 @@ class PredictVisualizer(Visualizer):
             features.update(attrs - targets)
 
         for relation in response:
-            data.append({ k:relation.entity_from.get(k) or relation.get(k) for k in features })
-            target.append({ k:relation.entity_from.get(k) or relation.get(k) for k in target_attributes })
+            data.append(
+                {k: relation.entity_from.get(k) or relation.get(k) for k in features}
+            )
+            target.append(
+                {
+                    k: relation.entity_from.get(k) or relation.get(k)
+                    for k in target_attributes
+                }
+            )
 
         def visualization():
             vect = DictVectorizer()
             X = vect.fit_transform(data)
-
-            st.write(features)
 
             for attr in target_attributes:
                 y = [d.get(attr) for d in target]
@@ -230,13 +245,24 @@ class PredictVisualizer(Visualizer):
                 if isinstance(y[0], (int, float)):
                     model = LinearRegression()
                     model.fit(X, y)
-                    coef = model.coef_.reshape(1,-1)
+                    coef = model.coef_.reshape(1, -1)
                 else:
                     model = LogisticRegression()
                     model.fit(X, y)
                     coef = model.coef_
 
-                st.write(vect.inverse_transform(coef))
+                features_weights = [
+                    dict(feature=f, weight=abs(w), positive=w > 0)
+                    for f, w in vect.inverse_transform(coef)[0].items()
+                ]
+                features_weights = pd.DataFrame(features_weights)
 
+                chart = alt.Chart(features_weights, title=f"Features predicting {attr}").mark_bar().encode(
+                    y="feature",
+                    x="weight",
+                    color="positive"
+                )
+
+                st.altair_chart(chart, use_container_width=True)
 
         return Visualization(title="🧠 Prediction", score=1, run=visualization)
