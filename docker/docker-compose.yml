@@ -11,7 +11,7 @@ services:
     volumes:
       - ../leto:/usr/local/lib/python3.8/site-packages/leto
       - ../:/home/coder/leto
-      - vscode-leto-extensions:/home/coder/.vscode-server/extensions
+      - vscode-leto:/home/coder/.vscode-server
     working_dir: "/home/coder/leto"
     command: ["streamlit", "run", "leto.py"]
 
@@ -28,4 +28,4 @@ services:
       - NEO4J_AUTH=neo4j/12345678
 
 volumes:
-  vscode-leto-extensions:
+  vscode-leto:
