@@ -1,15 +1,19 @@
 import abc
 import json
 import math
-from leto.query import MatchQuery, Query, WhatQuery, WhereQuery, WhoQuery, HowManyQuery
+
+from leto.query import MatchQuery, Query, WhatQuery, WhereQuery, WhoQuery, HowManyQuery, PredictQuery
 from leto.model import Relation
 from typing import Callable, List
 import pandas as pd
 import streamlit as st
 import graphviz
 import pydeck as pdk
-
 import plotly.express as px
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LinearRegression
+from sklearn.feature_extraction import DictVectorizer
 
 
 class Visualization:
@@ -151,9 +155,10 @@ class CountVisualizer(Visualizer):
             if R.label == "is_a" and R.entity_to.name in entities:
                 attrs = { attr:R.entity_from.get(attr) for attr in attributes }
                 value = R.get(field)
+                attrs[field] = R.get(field)
 
                 if value is not None:
-                    data.append(dict(name=R.entity_from.name, value=value, **attrs))
+                    data.append(dict(name=R.entity_from.name,**attrs))
 
 
         if not data:
@@ -182,3 +187,56 @@ class CountVisualizer(Visualizer):
                 switch_paint[str(df.dtypes[col])](df, col)
 
         return Visualization(title="📊 Chart", score=len(df), run=visualization)
+
+
+class PredictVisualizer(Visualizer):
+    def visualize(self, query: Query, response: List[Relation]):
+        if not isinstance(query, PredictQuery):
+            return Visualization.Empty()
+
+        entities = query.entities
+        terms = set(query.terms)
+
+        target_attributes = set()
+        features = set()
+        data = []
+        target = []
+
+        for relation in response:
+            attrs = set(relation.entity_from.attrs)
+            attrs.update(relation.attrs)
+
+            targets = attrs & terms
+
+            if not targets:
+                continue
+
+            target_attributes.update(targets)
+            features.update(attrs - targets)
+
+        for relation in response:
+            data.append({ k:relation.entity_from.get(k) or relation.get(k) for k in features })
+            target.append({ k:relation.entity_from.get(k) or relation.get(k) for k in target_attributes })
+
+        def visualization():
+            vect = DictVectorizer()
+            X = vect.fit_transform(data)
+
+            st.write(features)
+
+            for attr in target_attributes:
+                y = [d.get(attr) for d in target]
+
+                if isinstance(y[0], (int, float)):
+                    model = LinearRegression()
+                    model.fit(X, y)
+                    coef = model.coef_.reshape(1,-1)
+                else:
+                    model = LogisticRegression()
+                    model.fit(X, y)
+                    coef = model.coef_
+
+                st.write(vect.inverse_transform(coef))
+
+
+        return Visualization(title="🧠 Prediction", score=1, run=visualization)

@@ -55,6 +55,12 @@ class WhereQuery(Query):
     terms: List[str]
 
 
+@dataclass
+class PredictQuery(Query):
+    entities: List[Entity]
+    terms: List[str]
+
+
 class QueryResolver(abc.ABC):
     @abc.abstractmethod
     def _resolve_query(self, query: Query) -> Iterable[Relation]:

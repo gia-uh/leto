@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 import os
 from typing import Iterable, Tuple
 from leto.model import Entity, Relation
@@ -10,6 +9,7 @@ from leto.query import (
     WhichQuery,
     WhoQuery,
     HowManyQuery,
+    PredictQuery,
     MatchQuery,
 )
 from leto.storage import Storage
@@ -275,6 +275,7 @@ class GraphQueryResolver(QueryResolver):
             MatchQuery: self.resolve_match,
             WhereQuery: self.resolve_where,
             HowManyQuery: self.resolve_howmany,
+            PredictQuery: self.resolve_predict,
         }
 
         try:
@@ -472,10 +473,21 @@ class GraphQueryResolver(QueryResolver):
             for t in q.get(e0, r0, e1):
                 relation = self._build_relation_from_triplet((t[0], t[1][0], t[2]))
 
-                print(relation, relation.attrs)
-
                 if query.field in relation.attrs:
                     yield relation
+
+    def resolve_predict(self, query: PredictQuery) -> Iterable[Relation]:
+        for entity in query.entities:
+            e0, r0, e1 = Q.vars("e0 r0 e1")
+
+            q = Q(self.storage)
+            q._query_body = [
+                f"MATCH (e0)-[r0:is_a*1..]->(e1) WHERE e1.name = {repr(entity.name)}"
+            ]
+
+            for t in q.get(e0, r0, e1):
+                relation = self._build_relation_from_triplet((t[0], t[1][0], t[2]))
+                yield relation
 
 
 class Q:

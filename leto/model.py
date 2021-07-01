@@ -11,7 +11,12 @@ class Entity:
         return self.attrs[k]
 
     def get(self, att):
-        return self.attrs.get(att)
+        value = self.attrs.get(att)
+
+        try:
+            return float(value)
+        except:
+            return value
 
     def __str__(self) -> str:
         return f"{self.name}:{self.type}"
@@ -44,7 +49,12 @@ class Relation:
         return self.attrs[k]
 
     def get(self, att):
-        return self.attrs.get(att)
+        value = self.attrs.get(att)
+
+        try:
+            return float(value)
+        except:
+            return value
 
     def __str__(self) -> str:
         return f"({self.entity_from}) -[{self.label}]-> ({self.entity_to})"
