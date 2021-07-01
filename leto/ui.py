@@ -20,11 +20,17 @@ def bootstrap():
     st.title("🧠 LETO: Learning Engine Through Ontologies")
 
     with st.sidebar:
-        storages = {cls.__name__: cls for cls in get_storages()}
-        st.markdown("## 💾 Data storage info")
-        storage_cls = storages[st.selectbox("Storage driver", list(storages))]
-        storage: Storage = _build_cls(storage_cls)
-        st.write(f"Current size: {storage.size} tuples")
+        with st.beta_expander("⚙️ Config", False):
+            storages = {cls.__name__: cls for cls in get_storages()}
+            storage_cls = storages[st.selectbox("💾 Storage driver", list(storages))]
+            storage: Storage = _build_cls(storage_cls)
+            st.write(f"Current size: {storage.size} tuples")
+            parsers = {cls.__name__: cls for cls in get_parsers()}
+            parser_cls = parsers[st.selectbox("🧙‍♂️ Query parser", list(parsers))]
+            parser: QueryParser = parser_cls()
+
+        with st.beta_expander("🔥 Load new data", True):
+            load_data(storage)
 
     resolver: QueryResolver = storage.get_query_resolver()
     visualizers: List[Visualizer] = [
@@ -38,24 +44,13 @@ def bootstrap():
     main, side = st.beta_columns((2, 1))
 
     with side:
-        with st.beta_expander("🔥 Load new data", True):
-            load_data(storage)
-
         with st.beta_expander("❓ Example queries", True):
             st.info(
-                "If you have loaded the example data (👆 run **ExampleLoader**), you can try some of these queries to see an example of LETO's functionality."
+                "If you have loaded the example data, you can try some of these queries to see an example of LETO's functionality."
             )
             example = example_queries()
 
-    with st.sidebar:
-        parsers = {cls.__name__: cls for cls in get_parsers()}
-        st.markdown("## 🧙‍♂️ Query parsing")
-        parser_cls = parsers[st.selectbox("Query parser", list(parsers))]
-
-    parser: QueryParser = parser_cls()
-
     with main:
-
         if example:
             st.info(f"Using example query: `{example}`")
             if st.button("↪️ Back"):

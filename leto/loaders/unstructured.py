@@ -14,6 +14,9 @@ class Language(str, enum.Enum):
 
 
 class SVOFromText(Loader):
+    """
+    Load subject-verb-object triplets from natural language text.
+    """
     def __init__(self, text: Text, language: Language) -> None:
         self.text = text
         self.language = language
@@ -30,6 +33,9 @@ class SVOFromText(Loader):
 
 
 class SVOFromFile(Loader):
+    """
+    Load subject-verb-object triplets from natural language in a text file.
+    """
     def __init__(self, file: io.BytesIO, language: Language) -> None:
         self.file = file
         self.language = language
