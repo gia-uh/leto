@@ -10,6 +10,9 @@ class Entity:
     def __getattr__(self, k):
         return self.attrs[k]
 
+    def get(self, att):
+        return self.attrs.get(att)
+
     def __str__(self) -> str:
         return f"{self.name}:{self.type}"
 
@@ -22,8 +25,6 @@ class Entity:
     def __hash__(self) -> int:
         return hash(str(self))
 
-    def get(self, att):
-        return self.properties.get(att)
 
 
 class Relation:
@@ -37,8 +38,13 @@ class Relation:
         self.label = label
         self.entity_from = entity_from
         self.entity_to = entity_to
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+        self.attrs = kwargs.copy()
+
+    def __getattr__(self, k):
+        return self.attrs[k]
+
+    def get(self, att):
+        return self.attrs.get(att)
 
     def __str__(self) -> str:
         return f"({self.entity_from}) -[{self.label}]-> ({self.entity_to})"

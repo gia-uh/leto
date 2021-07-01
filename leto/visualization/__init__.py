@@ -118,26 +118,27 @@ class CountVisualizer(Visualizer):
         if not isinstance(query, HowManyQuery):
             return Visualization.Empty()
 
-        entities = query.entities
-        terms = query.terms
+        entities = set(e.name for e in query.entities)
+        field = query.field
+        attributes = query.attributes
 
-        interest_attributes = []
+        data = []
 
         for R in response:
-            if R.label == "is_a" and R.entity_to.name in [x.name for x in entities]:
-                for att in R.entity_from.__dict__.keys():
-                    if att in terms:
-                        interest_attributes.append(att)
+            if R.label == "is_a" and R.entity_to.name in entities:
+                attrs = { attr:R.entity_from.get(attr) for attr in attributes }
+                value = R.get(field)
 
-        if not interest_attributes:
+                if value is not None:
+                    data.append(dict(name=R.entity_from.name, value=value, **attrs))
+
+
+        if not data:
             return Visualization.Empty()
-
-        data = {"name": [R.entity_from.name for R in response]}
-        for att in interest_attributes:
-            data[att] = [R.entity_from.get(att) for R in response]
 
         df = pd.DataFrame(data)
         df.set_index("name", inplace=True)
+
         for col in df.columns:
             try:
                 df[col] = pd.to_numeric(df[col])
@@ -157,4 +158,4 @@ class CountVisualizer(Visualizer):
             for col in df.columns:
                 switch_paint[str(df.dtypes[col])](df, col)
 
-        return Visualization(title="📊 chart", score=len(df), run=visualization)
+        return Visualization(title="📊 Chart", score=len(df), run=visualization)

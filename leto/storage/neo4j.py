@@ -106,6 +106,7 @@ class GraphStorage(Storage):
                 {"name": relation.entity_from.name},
                 relation.entity_to.type,
                 {"name": relation.entity_to.name},
+                **relation.attrs,
             )
 
     def run_read_query(self, query: str, data_reader):
@@ -461,16 +462,20 @@ class GraphQueryResolver(QueryResolver):
     def resolve_howmany(self, query: HowManyQuery) -> Iterable[Relation]:
         for entity in query.entities:
 
-            e0, r0, e1, r, e2 = Q.vars("e0 r0 e1 r e2")
+            e0, r0, e1 = Q.vars("e0 r0 e1")
 
             q = Q(self.storage)
             q._query_body = [
-                f"MATCH (e0)-[r0:is_a*1..]->(e1)-[r:has_property]->(e2:PROP) WHERE e1.name = {repr(entity.name)}"
+                f"MATCH (e0)-[r0:is_a*1..]->(e1) WHERE e1.name = {repr(entity.name)}"
             ]
 
             for t in q.get(e0, r0, e1):
                 relation = self._build_relation_from_triplet((t[0], t[1][0], t[2]))
-                yield relation
+
+                print(relation, relation.attrs)
+
+                if query.field in relation.attrs:
+                    yield relation
 
 
 class Q:

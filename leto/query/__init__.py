@@ -34,6 +34,14 @@ class HowManyQuery(Query):
     entities: List[Entity]
     terms: List[str]
 
+    @property
+    def field(self):
+        return self.terms[0]
+
+    @property
+    def attributes(self):
+        return self.terms[1:]
+
 
 @dataclass
 class WhichQuery(Query):
