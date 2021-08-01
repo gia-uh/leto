@@ -22,5 +22,11 @@ RUN mkdir -p /home/$USERNAME/.vscode-server/extensions \
 
 COPY requirements.txt /home/$USERNAME/requirements.txt
 RUN pip install -r /home/$USERNAME/requirements.txt
+RUN python3 -m coreferee install en
+
+#setup OpenNRE
+RUN git clone https://github.com/thunlp/OpenNRE.git \
+    && pip install -r OpenNRE/requirements.txt \
+    && python OpenNRE/setup.py install
 
 USER $USERNAME

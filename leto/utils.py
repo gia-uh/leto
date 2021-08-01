@@ -41,7 +41,8 @@ def visitor(arg: str):
     return wrap
 
 
-data_directory = str(Path(__file__).parent.parent / "data" / "models")
+
+data_directory = "/home/coder/leto/data/models"  # str(Path(__file__).parent.parent / "data" / "models")
 
 
 def get_model(name: str = "en_core_web_sm") -> spacy.Language:
