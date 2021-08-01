@@ -119,7 +119,7 @@ def example_queries():
         "where has there been a Revolution",
         "Cuban Revolution and Vladimir Illich Lenin",
         "how much is the salary of a DataScientist by gender",
-        "which features predict salary in a DataScientist"
+        "which features predict salary in a DataScientist",
     ]:
         if st.button(f"❔ {q}"):
             example_query = q

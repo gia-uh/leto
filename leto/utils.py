@@ -41,7 +41,6 @@ def visitor(arg: str):
     return wrap
 
 
-
 data_directory = "/home/coder/leto/data/models"  # str(Path(__file__).parent.parent / "data" / "models")
 
 

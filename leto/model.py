@@ -31,7 +31,6 @@ class Entity:
         return hash(str(self))
 
 
-
 class Relation:
     label: str
     entity_from: Entity
