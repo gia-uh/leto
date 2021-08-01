@@ -1,13 +1,26 @@
 import abc
+import json
 import math
-from leto.query import MatchQuery, Query, WhatQuery, WhereQuery, WhoQuery, HowManyQuery
-from leto.model import Relation
 from typing import Callable, List
-import pandas as pd
-import streamlit as st
-import graphviz
 
+import altair as alt
+import graphviz
+import pandas as pd
 import plotly.express as px
+import pydeck as pdk
+import streamlit as st
+from leto.model import Relation
+from leto.query import (
+    HowManyQuery,
+    MatchQuery,
+    PredictQuery,
+    Query,
+    WhatQuery,
+    WhereQuery,
+    WhoQuery,
+)
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.linear_model import LinearRegression, LogisticRegression
 
 
 class Visualization:
@@ -87,6 +100,10 @@ class GraphVisualizer(Visualizer):
 
 
 class MapVisualizer(Visualizer):
+    def __init__(self) -> None:
+        with open("/home/coder/leto/data/countries.geo.json") as fp:
+            self.data = json.load(fp)["features"]
+
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
         if not isinstance(query, (WhereQuery, WhatQuery)):
             return Visualization.Empty()
@@ -103,10 +120,31 @@ class MapVisualizer(Visualizer):
         if not mapeable:
             return Visualization.Empty()
 
+        regions = set(d["name"] for d in mapeable)
         df = pd.DataFrame(mapeable).set_index("name")
 
         def visualization():
-            st.map(df)
+            data = [
+                feature
+                for feature in self.data
+                if feature["properties"]["name"] in regions
+            ]
+
+            geojson = pdk.Layer(
+                "GeoJsonLayer",
+                data,
+                opacity=0.8,
+                stroked=False,
+                filled=True,
+                extruded=True,
+                wireframe=True,
+                get_elevation=1,
+                get_fill_color=[255, 255, 255],
+                get_line_color=[255, 255, 255],
+            )
+            map = pdk.Deck(layers=[geojson])
+
+            st.pydeck_chart(map)
 
         return Visualization(
             title="🗺️ Map", score=len(df) / len(response), run=visualization
@@ -118,26 +156,27 @@ class CountVisualizer(Visualizer):
         if not isinstance(query, HowManyQuery):
             return Visualization.Empty()
 
-        entities = query.entities
-        terms = query.terms
+        entities = set(e.name for e in query.entities)
+        field = query.field
+        attributes = query.attributes
 
-        interest_attributes = []
+        data = []
 
         for R in response:
-            if R.label == "is_a" and R.entity_to.name in [x.name for x in entities]:
-                for att in R.entity_from.__dict__.keys():
-                    if att in terms:
-                        interest_attributes.append(att)
+            if R.label == "is_a" and R.entity_to.name in entities:
+                attrs = {attr: R.entity_from.get(attr) for attr in attributes}
+                value = R.get(field)
+                attrs[field] = R.get(field)
 
-        if not interest_attributes:
+                if value is not None:
+                    data.append(dict(name=R.entity_from.name, **attrs))
+
+        if not data:
             return Visualization.Empty()
-
-        data = {"name": [R.entity_from.name for R in response]}
-        for att in interest_attributes:
-            data[att] = [R.entity_from.get(att) for R in response]
 
         df = pd.DataFrame(data)
         df.set_index("name", inplace=True)
+
         for col in df.columns:
             try:
                 df[col] = pd.to_numeric(df[col])
@@ -157,4 +196,73 @@ class CountVisualizer(Visualizer):
             for col in df.columns:
                 switch_paint[str(df.dtypes[col])](df, col)
 
-        return Visualization(title="📊 chart", score=len(df), run=visualization)
+        return Visualization(title="📊 Chart", score=len(df), run=visualization)
+
+
+class PredictVisualizer(Visualizer):
+    def visualize(self, query: Query, response: List[Relation]):
+        if not isinstance(query, PredictQuery):
+            return Visualization.Empty()
+
+        entities = query.entities
+        terms = set(query.terms)
+
+        target_attributes = set()
+        features = set()
+        data = []
+        target = []
+
+        for relation in response:
+            attrs = set(relation.entity_from.attrs)
+            attrs.update(relation.attrs)
+
+            targets = attrs & terms
+
+            if not targets:
+                continue
+
+            target_attributes.update(targets)
+            features.update(attrs - targets)
+
+        for relation in response:
+            data.append(
+                {k: relation.entity_from.get(k) or relation.get(k) for k in features}
+            )
+            target.append(
+                {
+                    k: relation.entity_from.get(k) or relation.get(k)
+                    for k in target_attributes
+                }
+            )
+
+        def visualization():
+            vect = DictVectorizer()
+            X = vect.fit_transform(data)
+
+            for attr in target_attributes:
+                y = [d.get(attr) for d in target]
+
+                if isinstance(y[0], (int, float)):
+                    model = LinearRegression()
+                    model.fit(X, y)
+                    coef = model.coef_.reshape(1, -1)
+                else:
+                    model = LogisticRegression()
+                    model.fit(X, y)
+                    coef = model.coef_
+
+                features_weights = [
+                    dict(feature=f, weight=abs(w), positive=w > 0)
+                    for f, w in vect.inverse_transform(coef)[0].items()
+                ]
+                features_weights = pd.DataFrame(features_weights)
+
+                chart = alt.Chart(features_weights, title=f"Features predicting {attr}").mark_bar().encode(
+                    y="feature",
+                    x="weight",
+                    color="positive"
+                )
+
+                st.altair_chart(chart, use_container_width=True)
+
+        return Visualization(title="🧠 Prediction", score=1, run=visualization)

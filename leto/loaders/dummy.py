@@ -2,6 +2,7 @@ from leto.utils import Text
 from ..loaders import Loader
 
 from leto.model import Entity, Relation
+import random
 
 
 class ManualLoader(Loader):
@@ -46,14 +47,16 @@ class ExampleLoader(Loader):
     """
 
     def load(self):
+        r = random.Random(0)
+
         # Ontology of Revolutions
         Country = Entity("Country", "Thing")
 
         Cuba = Entity("Cuba", "Place", lon=-77.78, lat=21.52)
         yield Relation("is_a", Cuba, Country)
 
-        Rusia = Entity("Rusia", "Place", lon=105.31, lat=61.52)
-        yield Relation("is_a", Rusia, Country)
+        Russia = Entity("Russia", "Place", lon=105.31, lat=61.52)
+        yield Relation("is_a", Russia, Country)
 
         Revolution = Entity("Revolution", "Event")
 
@@ -63,7 +66,7 @@ class ExampleLoader(Loader):
 
         RusianRevolution = Entity("October Revolution", "Event", date="1918-11-17")
         yield Relation("is_a", RusianRevolution, Revolution)
-        yield Relation("has_location", RusianRevolution, Rusia)
+        yield Relation("has_location", RusianRevolution, Russia)
 
         FidelCastro = Entity("Fidel Castro", "Person", birth_date="1913-08-13")
         yield Relation("lead", FidelCastro, CubanRevolution)
@@ -73,3 +76,15 @@ class ExampleLoader(Loader):
 
         yield Relation("influence", Lenin, FidelCastro)
         yield Relation("influence", RusianRevolution, CubanRevolution)
+
+        # Jobs data
+        DataScientist = Entity("DataScientist", "Thing", abstract=True)
+
+        for _ in range(10):
+            firstname = r.choice(["Mary", "Tom", "Pete", "John", "Ana", "Susan"])
+            lastname = r.choice(["Johnson", "Smith", "Jackson", "Brooks", "Anderson"])
+            age = r.randint(20, 50)
+            gender = r.choice(["male", "female"])
+
+            person = Entity(firstname + lastname, "Person", firstname=firstname, lastname=lastname, age=age, gender=gender)
+            yield Relation("is_a", person, DataScientist, salary=r.randint(1,10) * 1000)

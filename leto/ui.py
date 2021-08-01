@@ -11,6 +11,7 @@ from .visualization import (
     MapVisualizer,
     GraphVisualizer,
     CountVisualizer,
+    PredictVisualizer,
 )
 from io import StringIO
 
@@ -19,11 +20,17 @@ def bootstrap():
     st.title("🧠 LETO: Learning Engine Through Ontologies")
 
     with st.sidebar:
-        storages = {cls.__name__: cls for cls in get_storages()}
-        st.markdown("## 💾 Data storage info")
-        storage_cls = storages[st.selectbox("Storage driver", list(storages))]
-        storage: Storage = _build_cls(storage_cls)
-        st.write(f"Current size: {storage.size} tuples")
+        with st.beta_expander("⚙️ Config", False):
+            storages = {cls.__name__: cls for cls in get_storages()}
+            storage_cls = storages[st.selectbox("💾 Storage driver", list(storages))]
+            storage: Storage = _build_cls(storage_cls)
+            st.write(f"Current size: {storage.size} tuples")
+            parsers = {cls.__name__: cls for cls in get_parsers()}
+            parser_cls = parsers[st.selectbox("🧙‍♂️ Query parser", list(parsers))]
+            parser: QueryParser = parser_cls()
+
+        with st.beta_expander("🔥 Load new data", True):
+            load_data(storage)
 
     resolver: QueryResolver = storage.get_query_resolver()
     visualizers: List[Visualizer] = [
@@ -31,29 +38,19 @@ def bootstrap():
         MapVisualizer(),
         GraphVisualizer(),
         CountVisualizer(),
+        PredictVisualizer(),
     ]
 
     main, side = st.beta_columns((2, 1))
 
     with side:
-        with st.beta_expander("🔥 Load new data", True):
-            load_data(storage)
-
         with st.beta_expander("❓ Example queries", True):
             st.info(
-                "If you have loaded the example data (👆 run **ExampleLoader**), you can try some of these queries to see an example of LETO's functionality."
+                "If you have loaded the example data, you can try some of these queries to see an example of LETO's functionality."
             )
             example = example_queries()
 
-    with st.sidebar:
-        parsers = {cls.__name__: cls for cls in get_parsers()}
-        st.markdown("## 🧙‍♂️ Query parsing")
-        parser_cls = parsers[st.selectbox("Query parser", list(parsers))]
-
-    parser: QueryParser = parser_cls()
-
     with main:
-
         if example:
             st.info(f"Using example query: `{example}`")
             if st.button("↪️ Back"):
@@ -105,7 +102,10 @@ def load_data(storage):
 
         for i, relation in enumerate(loader.load()):
             progress.warning(f"⚙️ Loading {i+1} tuples...")
-            storage.store(relation)
+            try:
+                storage.store(relation)
+            except Exception as e:
+                print(e)
 
         progress.success(f"🥳 Succesfully loaded {i+1} tuples!")
 
@@ -119,6 +119,7 @@ def example_queries():
         "where has there been a Revolution",
         "Cuban Revolution and Vladimir Illich Lenin",
         "how much is the salary of a DataScientist by gender",
+        "which features predict salary in a DataScientist"
     ]:
         if st.button(f"❔ {q}"):
             example_query = q

@@ -6,7 +6,10 @@ from io import BytesIO
 from leto.model import Entity, Relation
 
 
-class CsvLoader(Loader):
+class CSVLoader(Loader):
+    """
+    Load structured data in table format from a CSV file.
+    """
     def __init__(self, path: BytesIO) -> None:
         self.path = path
 

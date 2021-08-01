@@ -30,9 +30,17 @@ class RuleBasedQueryParser(QueryParser):
 
         query_hints = self._get_query_hints()
 
+        best_query = None
+        best_query_matches = 0
+
         for query_type, hints in query_hints.items():
-            if doc[0].lemma_ in hints:
-                return query_type(entities=entities, terms=terms)
+            found_hints = len([token.lemma_ for token in doc if token.lemma_ in hints])
+            if found_hints > best_query_matches:
+                best_query = query_type(entities=entities, terms=terms)
+                best_query_matches = found_hints
+
+        if best_query is not None:
+            return best_query
 
         return MatchQuery(entities=entities, terms=terms)
 
@@ -43,11 +51,12 @@ class SpanishRuleParser(RuleBasedQueryParser):
 
     def _get_query_hints(self) -> Dict[type, str]:
         return {
-            WhatQuery: ["qué", "que"],
-            WhoQuery: ["quién", "quien"],
-            WhichQuery: ["cuál", "cual"],
-            WhereQuery: ["dónde", "donde"],
-            HowManyQuery: ["cuánto", "cuanto"],
+            WhatQuery: ["qué"],
+            WhoQuery: ["quién"],
+            WhichQuery: ["cuál"],
+            WhereQuery: ["dónde"],
+            HowManyQuery: ["cuánto"],
+            PredictQuery: ["qué", "influir", "predecir", "cuál"],
         }
 
 
@@ -61,5 +70,6 @@ class EnglishRuleParser(RuleBasedQueryParser):
             WhoQuery: ["who"],
             WhichQuery: ["which"],
             WhereQuery: ["where"],
-            HowManyQuery: ["how"],
+            HowManyQuery: ["how", "much"],
+            PredictQuery: ["what", "influence", "predict", "which"],
         }

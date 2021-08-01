@@ -6,7 +6,6 @@ from leto.model import Entity, Relation
 from leto.loaders.unstructured import get_svo_tripplets, get_model
 from leto.storage.neo4j_storage import GraphStorage
 from leto.loaders.unstructured import Language
-import coreferee
 import subprocess
 import urllib
 from string import punctuation
@@ -129,8 +128,23 @@ def get_coreference_resolved_docs(nlp: spacy.Language, docs: Iterable[str]):
     return updated_docs
 
 
+class WikipediaLoader(Loader):
+    """
+    Load all the content from a specific Wikipedia page.
+    """
+    def __init__(self, query: str, language: Language) -> None:
+        self.query = query
+        self.language = language
+
+    def load(self):
+        if self.language is Language.es:
+            wikipedia.set_lang("es")
+
+        page = wikipedia.page(self.query)
+        return _seed_content(page.content, self.language)
+
+
 def _seed_content(content: str, language: Language):
-    graph_db = GraphStorage()
     nlp = get_model(language)
 
     ready_content = content
