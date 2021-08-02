@@ -98,7 +98,7 @@ def save_model(model: spacy.Language, name: str):
         name (str): Name, identification for the language. If name is already in use will override saved data.
     """
     config = model.config
-    _ensure_data_directory(data_directory)
+    _ensure_data_directory()
     model.to_disk(os.path.join(data_directory, name))
 
 
