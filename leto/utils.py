@@ -44,6 +44,13 @@ def visitor(arg: str):
 data_directory = "/home/coder/leto/data/models"  # str(Path(__file__).parent.parent / "data" / "models")
 
 
+def _ensure_data_directory():
+    try:
+        os.makedirs(data_directory)
+    except:
+        pass
+
+
 def get_model(name: str = "en_core_web_sm") -> spacy.Language:
     """Get an spacy language model from different sources. First, tryes to load
     the model from disk, if fails, then load and install from original repo.
@@ -91,6 +98,7 @@ def save_model(model: spacy.Language, name: str):
         name (str): Name, identification for the language. If name is already in use will override saved data.
     """
     config = model.config
+    _ensure_data_directory(data_directory)
     model.to_disk(os.path.join(data_directory, name))
 
 
