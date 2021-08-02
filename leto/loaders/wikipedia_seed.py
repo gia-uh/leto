@@ -11,9 +11,13 @@ import urllib
 from string import punctuation
 from leto.loaders import Loader
 import itertools
-import opennre
 import coreferee
 
+try:
+    import opennre
+except:
+    subprocess.run(["pip","install","git+https://github.com/thunlp/OpenNRE.git#egg=OpenNRE"])
+    import opennre
 
 ENTITY_TYPES = [
     "human",
