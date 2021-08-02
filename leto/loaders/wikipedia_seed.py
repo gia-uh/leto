@@ -16,7 +16,9 @@ import coreferee
 try:
     import opennre
 except:
-    subprocess.run(["pip","install","git+https://github.com/thunlp/OpenNRE.git#egg=OpenNRE"])
+    subprocess.run(
+        ["pip", "install", "git+https://github.com/thunlp/OpenNRE.git#egg=OpenNRE"]
+    )
     import opennre
 
 ENTITY_TYPES = [
