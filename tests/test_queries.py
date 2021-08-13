@@ -11,4 +11,3 @@ from leto.query import WhatQuery, WhoQuery, WhereQuery, WhichQuery, HowManyQuery
 # )
 # def test_spanish_query(query, result):
 #     assert SpanishRuleParser().parse(query) == result
-
