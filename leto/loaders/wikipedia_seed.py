@@ -163,11 +163,10 @@ def _seed_content(content: str, language: Language):
     doc = nlp(ready_content)
     # First get all the entities in the sentence
     entities = []
-    # for sent in doc.sents:
-    #     entities += wikifier(sent)
 
     relation_model = opennre.get_model("wiki80_bert_softmax")
     relations_list = []
+    graph_db = GraphStorage()
     for sentence in doc.sents:
         try:
             sentence_entities = wikifier(sentence)
