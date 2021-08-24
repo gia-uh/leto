@@ -20,7 +20,7 @@ def bootstrap():
     st.title("🧠 LETO: Learning Engine Through Ontologies")
 
     with st.sidebar:
-        with st.beta_expander("⚙️ Config", False):
+        with st.expander("⚙️ Config", False):
             storages = {cls.__name__: cls for cls in get_storages()}
             storage_cls = storages[st.selectbox("💾 Storage driver", list(storages))]
             storage: Storage = _build_cls(storage_cls)
@@ -29,7 +29,7 @@ def bootstrap():
             parser_cls = parsers[st.selectbox("🧙‍♂️ Query parser", list(parsers))]
             parser: QueryParser = parser_cls()
 
-        with st.beta_expander("🔥 Load new data", True):
+        with st.expander("🔥 Load new data", True):
             load_data(storage)
 
     resolver: QueryResolver = storage.get_query_resolver()
@@ -41,14 +41,14 @@ def bootstrap():
         PredictVisualizer(),
     ]
 
-    main, side = st.beta_columns((2, 1))
+    main, side = st.columns((2, 1))
 
     with side:
-        with st.beta_expander("❓ Example queries", True):
-            st.info(
-                "If you have loaded the example data, you can try some of these queries to see an example of LETO's functionality."
-            )
-            example = example_queries()
+        st.markdown("### ❓ Example queries")
+        st.info(
+            "If you have loaded the example data, you can try some of these queries to see an example of LETO's functionality."
+        )
+        example = example_queries()
 
     with main:
         if example:
@@ -67,10 +67,6 @@ def bootstrap():
             st.code(query)
 
             response = resolver.resolve(query)
-
-            if not response:
-                st.error("😨 No data was found to answer that query!")
-                st.stop()
 
             if not response:
                 st.error("😨 No data was found to answer that query!")
@@ -119,7 +115,7 @@ def example_queries():
         "where has there been a Revolution",
         "Cuban Revolution and Vladimir Illich Lenin",
         "how much is the salary of a DataScientist by gender",
-        "which features predict salary in a DataScientist"
+        "which features predict salary in a DataScientist",
     ]:
         if st.button(f"❔ {q}"):
             example_query = q

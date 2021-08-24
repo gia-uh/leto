@@ -10,6 +10,7 @@ class CSVLoader(Loader):
     """
     Load structured data in table format from a CSV file.
     """
+
     def __init__(self, path: BytesIO) -> None:
         self.path = path
 

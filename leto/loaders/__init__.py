@@ -15,4 +15,11 @@ def get_loaders() -> List[Loader]:
     from .structured import CSVLoader
     from .wikipedia import WikipediaLoader
 
-    return [ExampleLoader, ManualLoader, CSVLoader, SVOFromFile, SVOFromText, WikipediaLoader]
+    return [
+        ExampleLoader,
+        ManualLoader,
+        CSVLoader,
+        SVOFromFile,
+        SVOFromText,
+        WikipediaLoader,
+    ]

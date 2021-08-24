@@ -86,5 +86,14 @@ class ExampleLoader(Loader):
             age = r.randint(20, 50)
             gender = r.choice(["male", "female"])
 
-            person = Entity(firstname + lastname, "Person", firstname=firstname, lastname=lastname, age=age, gender=gender)
-            yield Relation("is_a", person, DataScientist, salary=r.randint(1,10) * 1000)
+            person = Entity(
+                firstname + lastname,
+                "Person",
+                firstname=firstname,
+                lastname=lastname,
+                age=age,
+                gender=gender,
+            )
+            yield Relation(
+                "is_a", person, DataScientist, salary=r.randint(1, 10) * 1000
+            )

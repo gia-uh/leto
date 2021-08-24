@@ -257,10 +257,10 @@ class PredictVisualizer(Visualizer):
                 ]
                 features_weights = pd.DataFrame(features_weights)
 
-                chart = alt.Chart(features_weights, title=f"Features predicting {attr}").mark_bar().encode(
-                    y="feature",
-                    x="weight",
-                    color="positive"
+                chart = (
+                    alt.Chart(features_weights, title=f"Features predicting {attr}")
+                    .mark_bar()
+                    .encode(y="feature", x="weight", color="positive")
                 )
 
                 st.altair_chart(chart, use_container_width=True)
