@@ -24,7 +24,7 @@ def bootstrap():
             storages = {cls.__name__: cls for cls in get_storages()}
             storage_cls = storages[st.selectbox("💾 Storage driver", list(storages))]
             storage: Storage = _build_cls(storage_cls)
-            st.write(f"Current size: {storage.size} tuples")
+            st.metric(f"Current size (tuples)", storage.size)
             parsers = {cls.__name__: cls for cls in get_parsers()}
             parser_cls = parsers[st.selectbox("🧙‍♂️ Query parser", list(parsers))]
             parser: QueryParser = parser_cls()
