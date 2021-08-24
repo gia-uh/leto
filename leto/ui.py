@@ -48,17 +48,10 @@ def bootstrap():
         st.info(
             "If you have loaded the example data, you can try some of these queries to see an example of LETO's functionality."
         )
-        example = example_queries()
+        example_queries()
 
     with main:
-        if example:
-            st.info(f"Using example query: `{example}`")
-            if st.button("↪️ Back"):
-                st.experimental_rerun()
-
-            query_text = example
-        else:
-            query_text = st.text_input("🔮 Enter a query for LETO")
+        query_text = st.text_input("🔮 Enter a query for LETO", key="query_input")
 
         if query_text:
             query = parser.parse(query_text)
@@ -118,9 +111,7 @@ def example_queries():
         "which features predict salary in a DataScientist",
     ]:
         if st.button(f"❔ {q}"):
-            example_query = q
-
-    return example_query
+            st.session_state.query_input = q
 
 
 def _build_cls(cls):

@@ -30,7 +30,7 @@ class Visualization:
         self.run = run
 
     def visualize(self):
-        with st.beta_expander(self.title, self.score > 0):
+        with st.expander(self.title, self.score > 0):
             self.run()
 
     def valid(self) -> bool:
