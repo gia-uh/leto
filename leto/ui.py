@@ -86,10 +86,18 @@ def load_data(storage):
 
     loader = _build_cls(loader_cls)
 
+    metadata = st.text_area("Metadata").split("\n")
+    meta = {}
+
+    for line in metadata:
+        if line:
+            k,v = line.split("=")
+            meta[k.strip()] = v.strip()
+
     if st.button("🚀 Run"):
         progress = st.empty()
 
-        for i, relation in enumerate(loader.load()):
+        for i, relation in enumerate(loader.load(**meta)):
             progress.warning(f"⚙️ Loading {i+1} tuples...")
             try:
                 storage.store(relation)

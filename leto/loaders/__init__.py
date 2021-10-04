@@ -10,7 +10,7 @@ class Loader(abc.ABC):
     def _load(self) -> Iterable[Relation]:
         pass
 
-    def load(self) -> Iterable[Relation]:
+    def load(self, **metadata) -> Iterable[Relation]:
         entities = set()
 
         for relation in self._load():
@@ -18,7 +18,7 @@ class Loader(abc.ABC):
             entities.add(relation.entity_from)
             entities.add(relation.entity_to)
 
-        metadata = Entity(f"Meta-{str(uuid.uuid4())}", "_METADATA", created_on=datetime.datetime.now().astimezone(None).isoformat())
+        metadata = Entity(f"Meta-{str(uuid.uuid4())}", "_METADATA", created_on=datetime.datetime.now().astimezone(None).isoformat(), **metadata)
 
         for entity in entities:
             yield Relation("__metadata__", entity, metadata)
