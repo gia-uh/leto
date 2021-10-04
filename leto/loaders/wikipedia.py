@@ -30,11 +30,16 @@ class WikipediaLoader(Loader):
     """
     Load all the content from a specific Wikipedia page.
     """
+
     def __init__(self, query: str, language: Language) -> None:
         self.query = query
         self.language = language
 
-    def load(self):
+    @classmethod
+    def title(cls):
+        return "From Wikipedia page"
+
+    def _load(self):
         if self.language is Language.es:
             wikipedia.set_lang("es")
 

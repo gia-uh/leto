@@ -17,11 +17,16 @@ class SVOFromText(Loader):
     """
     Load subject-verb-object triplets from natural language text.
     """
+
     def __init__(self, text: Text, language: Language) -> None:
         self.text = text
         self.language = language
 
-    def load(self):
+    @classmethod
+    def title(cls):
+        return "From Plain Text"
+
+    def _load(self):
         nlp = get_model(self.language)
 
         for subj, verb, obj in get_svo_tripplets(nlp, self.text):
@@ -36,11 +41,16 @@ class SVOFromFile(Loader):
     """
     Load subject-verb-object triplets from natural language in a text file.
     """
+
     def __init__(self, file: io.BytesIO, language: Language) -> None:
         self.file = file
         self.language = language
 
-    def load(self):
+    @classmethod
+    def title(cls):
+        return "From Text File"
+
+    def _load(self):
         nlp = get_model(self.language)
 
         for line in self.file.readlines():

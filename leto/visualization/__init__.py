@@ -30,7 +30,7 @@ class Visualization:
         self.run = run
 
     def visualize(self):
-        with st.beta_expander(self.title, self.score > 0):
+        with st.expander(self.title, self.score > 0):
             self.run()
 
     def valid(self) -> bool:
@@ -257,10 +257,10 @@ class PredictVisualizer(Visualizer):
                 ]
                 features_weights = pd.DataFrame(features_weights)
 
-                chart = alt.Chart(features_weights, title=f"Features predicting {attr}").mark_bar().encode(
-                    y="feature",
-                    x="weight",
-                    color="positive"
+                chart = (
+                    alt.Chart(features_weights, title=f"Features predicting {attr}")
+                    .mark_bar()
+                    .encode(y="feature", x="weight", color="positive")
                 )
 
                 st.altair_chart(chart, use_container_width=True)
