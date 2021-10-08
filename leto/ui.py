@@ -86,7 +86,7 @@ def load_data(storage):
 
     loader = _build_cls(loader_cls)
 
-    metadata = st.text_area("Metadata").split("\n")
+    metadata = st.text_area("🏷️ Metadata").split("\n")
     meta = {}
 
     for line in metadata:

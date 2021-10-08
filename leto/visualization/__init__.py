@@ -63,7 +63,7 @@ class GraphVisualizer(Visualizer):
         def visualization():
             graph = graphviz.Digraph()
 
-            entities = set(e.name for e in query.entities)
+            entities = set(query.entities)
             main_entities = set()
 
             for tuple in response:
@@ -156,9 +156,9 @@ class CountVisualizer(Visualizer):
         if not isinstance(query, HowManyQuery):
             return Visualization.Empty()
 
-        entities = set(e.name for e in query.entities)
-        field = query.field
-        attributes = query.attributes
+        entities = set(query.entities)
+        field = query.attributes[0]
+        attributes = query.attributes[1:]
 
         data = []
 

@@ -8,11 +8,6 @@ from leto.model import Entity, Relation
 
 @dataclass
 class Query(abc.ABC):
-    pass
-
-
-@dataclass
-class FuzzyQuery(Query):
     entities: List[str]
     relations: List[str]
     attributes: List[str]
@@ -20,61 +15,46 @@ class FuzzyQuery(Query):
 
 @dataclass
 class MatchQuery(Query):
-    entities: List[Entity]
-    terms: List[str]
+    pass
 
 
 @dataclass
 class WhatQuery(Query):
-    entities: List[Entity]
-    terms: List[str]
+    pass
 
 
 @dataclass
 class WhoQuery(Query):
-    entities: List[Entity]
-    terms: List[str]
+    pass
 
 
 @dataclass
 class HowManyQuery(Query):
-    entities: List[Entity]
-    terms: List[str]
-
-    @property
-    def field(self):
-        return self.terms[0]
-
-    @property
-    def attributes(self):
-        return self.terms[1:]
+    pass
 
 
 @dataclass
 class WhichQuery(Query):
-    entities: List[Entity]
-    terms: List[str]
+    pass
 
 
 @dataclass
 class WhereQuery(Query):
-    entities: List[Entity]
-    terms: List[str]
+    pass
 
 
 @dataclass
 class PredictQuery(Query):
-    entities: List[Entity]
-    terms: List[str]
+    pass
 
 
 class QueryResolver(abc.ABC):
     @abc.abstractmethod
-    def _resolve_query(self, query: Query) -> Iterable[Relation]:
+    def _resolve(self, query: Query) -> Iterable[Relation]:
         pass
 
     def resolve(self, query: Query) -> List[Relation]:
-        return list(set(self._resolve_query(query)))
+        return list(set(self._resolve(query)))
 
 
 class QueryParser(abc.ABC):
@@ -85,6 +65,5 @@ class QueryParser(abc.ABC):
 
 def get_parsers():
     from leto.query.rules import SpanishRuleParser, EnglishRuleParser
-    from leto.query.fuzzy import FuzzyParser
 
     return [EnglishRuleParser, SpanishRuleParser]

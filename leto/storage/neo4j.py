@@ -2,16 +2,8 @@ import os
 from typing import Iterable, Tuple, Union
 from leto.model import Entity, Relation
 from leto.query import (
-    FuzzyQuery,
     Query,
     QueryResolver,
-    WhatQuery,
-    WhereQuery,
-    WhichQuery,
-    WhoQuery,
-    HowManyQuery,
-    PredictQuery,
-    MatchQuery,
 )
 from leto.storage import Storage
 
@@ -272,201 +264,7 @@ class GraphQueryResolver(QueryResolver):
             results.append(self._build_entity_from_node(single))
         return results
 
-    def _resolve_query(self, query: Query) -> Iterable[Relation]:
-        switch = {
-            WhoQuery: self.resolve_who,
-            WhatQuery: self.resolve_what,
-            WhichQuery: self.resolve_which,
-            MatchQuery: self.resolve_match,
-            WhereQuery: self.resolve_where,
-            HowManyQuery: self.resolve_howmany,
-            PredictQuery: self.resolve_predict,
-            FuzzyQuery: self.resolve_fuzzy,
-        }
-
-        try:
-            return switch[type(query)](query)
-        except Exception as e:
-            # TODO: better handle resolve error
-            raise e
-
-    def resolve_where(self, query: WhereQuery) -> Iterable[Relation]:
-        entities = list(query.entities)
-
-        # Expand entities to contain instances of is_a
-        for entity in query.entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in (
-                Q(self.storage)
-                .match(e1[r] >> e2)
-                .where({e2.name: entity.name})
-                .get(e1, r, e2)
-            ):
-                relation = self._build_relation_from_triplet(t)
-
-                if relation.label == "is_a":
-                    yield relation
-                    entities.append(relation.entity_from)
-
-        # Solving where e1 is related with e2
-        for entity in entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in (
-                Q(self.storage)
-                .match(e1[r] >> e2)
-                .where({e1.name: entity.name})
-                .get(e1, r, e2)
-            ):
-                relation = self._build_relation_from_triplet(t)
-
-                if relation.entity_to.type != "Place":
-                    continue
-
-                yield relation
-
-    def resolve_who(self, query: WhoQuery) -> Iterable[Relation]:
-        entities = list(query.entities)
-
-        # Expand entities to contain instances of is_a
-        for entity in query.entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in (
-                Q(self.storage)
-                .match(e1[r] >> e2)
-                .where({e2.name: entity.name})
-                .get(e1, r, e2)
-            ):
-                relation = self._build_relation_from_triplet(t)
-
-                if relation.label == "is_a":
-                    yield relation
-                    entities.append(relation.entity_from)
-
-        # Solving where e1 is the who
-        for entity in entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in (
-                Q(self.storage)
-                .match(e1[r] >> e2)
-                .where({e2.name: entity.name})
-                .get(e1, r, e2)
-            ):
-                relation = self._build_relation_from_triplet(t)
-
-                if relation.label in query.terms:
-                    yield relation
-
-    def resolve_which(self, query: WhichQuery) -> Iterable[Relation]:
-        entities = list(query.entities)
-
-        # Expand entities to contain instances of is_a
-        for entity in query.entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in (
-                Q(self.storage)
-                .match(e1[r] >> e2)
-                .where({e2.name: entity.name})
-                .get(e1, r, e2)
-            ):
-                relation = self._build_relation_from_triplet(t)
-
-                if relation.label == "is_a":
-                    yield relation
-                    entities.append(relation.entity_from)
-
-        # Solving where e1 is the who
-        for entity in entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in (
-                Q(self.storage)
-                .match(e1[r] >> e2)
-                .where({e1.name: entity.name})
-                .get(e1, r, e2)
-            ):
-                relation = self._build_relation_from_triplet(t)
-
-                if relation.label in query.terms:
-                    yield relation
-
-    def resolve_what(self, query: WhatQuery) -> Iterable[Relation]:
-        # Solving when e1 is_a what they are asking
-        for entity in query.entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in (
-                Q(self.storage)
-                .match(e1[r] >> e2)
-                .where({e2.name: entity.name})
-                .get(e1, r, e2)
-            ):
-                relation = self._build_relation_from_triplet(t)
-
-                if relation.label == "is_a":
-                    yield relation
-
-        # Solving for e1
-        for entity in query.entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in (
-                Q(self.storage)
-                .match(e1[r] >> e2)
-                .where({e1.name: entity.name})
-                .get(e1, r, e2)
-            ):
-                relation = self._build_relation_from_triplet(t)
-                yield relation
-
-    def resolve_match(self, query: MatchQuery) -> Iterable[Relation]:
-        entities = list(query.entities)
-
-        # Expand entities to contain instances of is_a
-        for entity in query.entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in (
-                Q(self.storage)
-                .match(e1[r] >> e2)
-                .where({e2.name: entity.name})
-                .get(e1, r, e2)
-            ):
-                relation = self._build_relation_from_triplet(t)
-
-                if relation.label == "is_a":
-                    yield relation
-                    entities.append(relation.entity_from)
-
-        for entity in entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in (
-                Q(self.storage)
-                .match(e1[r] >> e2)
-                .where({e1.name: entity.name})
-                .get(e1, r, e2)
-            ):
-                relation = self._build_relation_from_triplet(t)
-                yield relation
-
-        for entity in entities:
-            e1, r, e2 = Q.vars("e1 r e2")
-
-            for t in (
-                Q(self.storage)
-                .match(e1[r] >> e2)
-                .where({e2.name: entity.name})
-                .get(e1, r, e2)
-            ):
-                relation = self._build_relation_from_triplet(t)
-                yield relation
-
-    def resolve_fuzzy(self, query: FuzzyQuery) -> Iterable[Relation]:
+    def _resolve(self, query: Query) -> Iterable[Relation]:
         entities = list(query.entities)
 
         # Expand entities to contain instances of is_a
@@ -483,7 +281,7 @@ class GraphQueryResolver(QueryResolver):
 
                 if relation.label == "is_a":
                     yield relation
-                    entities.append(relation.entity_from)
+                    entities.append(relation.entity_from.name)
 
         for entity in entities:
             e1, r, e2 = Q.vars("e1 r e2")
@@ -491,7 +289,7 @@ class GraphQueryResolver(QueryResolver):
             for t in (
                 Q(self.storage)
                 .match(e1[r] >> e2)
-                .where({e1.name: entity.name})
+                .where({e1.name: entity})
                 .get(e1, r, e2)
             ):
                 relation = self._build_relation_from_triplet(t)
@@ -503,39 +301,10 @@ class GraphQueryResolver(QueryResolver):
             for t in (
                 Q(self.storage)
                 .match(e1[r] >> e2)
-                .where({e2.name: entity.name})
+                .where({e2.name: entity})
                 .get(e1, r, e2)
             ):
                 relation = self._build_relation_from_triplet(t)
-                yield relation
-
-    def resolve_howmany(self, query: HowManyQuery) -> Iterable[Relation]:
-        for entity in query.entities:
-
-            e0, r0, e1 = Q.vars("e0 r0 e1")
-
-            q = Q(self.storage)
-            q._query_body = [
-                f"MATCH (e0)-[r0:is_a*1..]->(e1) WHERE e1.name = {repr(entity.name)}"
-            ]
-
-            for t in q.get(e0, r0, e1):
-                relation = self._build_relation_from_triplet((t[0], t[1][0], t[2]))
-
-                if query.field in relation.attrs:
-                    yield relation
-
-    def resolve_predict(self, query: PredictQuery) -> Iterable[Relation]:
-        for entity in query.entities:
-            e0, r0, e1 = Q.vars("e0 r0 e1")
-
-            q = Q(self.storage)
-            q._query_body = [
-                f"MATCH (e0)-[r0:is_a*1..]->(e1) WHERE e1.name = {repr(entity.name)}"
-            ]
-
-            for t in q.get(e0, r0, e1):
-                relation = self._build_relation_from_triplet((t[0], t[1][0], t[2]))
                 yield relation
 
 
