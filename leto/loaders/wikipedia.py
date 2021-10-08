@@ -35,7 +35,11 @@ class WikipediaLoader(Loader):
         self.query = query
         self.language = language
 
-    def load(self):
+    @classmethod
+    def title(cls):
+        return "From Wikipedia page"
+
+    def _load(self):
         if self.language is Language.es:
             wikipedia.set_lang("es")
 

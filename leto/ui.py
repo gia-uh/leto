@@ -27,7 +27,7 @@ def bootstrap():
             st.metric(f"Current size (tuples)", storage.size)
             parsers = {cls.__name__: cls for cls in get_parsers()}
             parser_cls = parsers[st.selectbox("🧙‍♂️ Query parser", list(parsers))]
-            parser: QueryParser = parser_cls()
+            parser: QueryParser = parser_cls(storage)
 
         with st.expander("🔥 Load new data", True):
             load_data(storage)
@@ -76,7 +76,7 @@ def bootstrap():
 
 
 def load_data(storage):
-    loaders = {cls.__name__: cls for cls in get_loaders()}
+    loaders = {cls.title(): cls for cls in get_loaders()}
     loader_cls = loaders[st.selectbox("Loader", list(loaders))]
 
     docstring = dedent(loader_cls.__doc__)
@@ -86,10 +86,18 @@ def load_data(storage):
 
     loader = _build_cls(loader_cls)
 
+    metadata = st.text_area("Metadata").split("\n")
+    meta = {}
+
+    for line in metadata:
+        if line:
+            k,v = line.split("=")
+            meta[k.strip()] = v.strip()
+
     if st.button("🚀 Run"):
         progress = st.empty()
 
-        for i, relation in enumerate(loader.load()):
+        for i, relation in enumerate(loader.load(**meta)):
             progress.warning(f"⚙️ Loading {i+1} tuples...")
             try:
                 storage.store(relation)
@@ -132,10 +140,12 @@ def _build_cls(cls):
             init_values[k] = st.text_input(k, value="")
         elif v == Text:
             init_values[k] = st.text_area(k, value="")
+        elif v == io.BytesIO:
+            init_values[k] = st.file_uploader(k)
+        elif v == List[io.BytesIO]:
+            init_values[k] = st.file_uploader(k, accept_multiple_files=True)
         elif issubclass(v, enum.Enum):
             values = {e.name: e.value for e in v}
             init_values[k] = values[st.selectbox(k, list(values))]
-        elif v == io.BytesIO:
-            init_values[k] = st.file_uploader(k)
 
     return cls(**init_values)

@@ -1,12 +1,13 @@
 import abc
-from typing import List
+from leto.model import Entity, Relation
+from typing import List, Union
 
 from leto.query import QueryResolver
 
 
 class Storage(abc.ABC):
     @abc.abstractmethod
-    def store(self, relation):
+    def store(self, entity_or_relation: Union[Entity, Relation]):
         pass
 
     @abc.abstractproperty

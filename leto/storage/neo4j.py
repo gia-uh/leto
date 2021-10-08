@@ -1,7 +1,8 @@
 import os
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, Union
 from leto.model import Entity, Relation
 from leto.query import (
+    FuzzyQuery,
     Query,
     QueryResolver,
     WhatQuery,
@@ -76,10 +77,14 @@ class GraphStorage(Storage):
         with self.driver.session() as session:
             return session.read_transaction(self._get_size)
 
-    def store(self, relation: Relation):
-        self.create_entity(relation.entity_from)
-        self.create_entity(relation.entity_to)
-        self.create_relationship(relation)
+    def store(self, entity_or_relation: Union[Entity, Relation]):
+        if isinstance(entity_or_relation, Entity):
+            self.create_entity(entity_or_relation)
+
+        else:
+            self.create_entity(entity_or_relation.entity_from)
+            self.create_entity(entity_or_relation.entity_to)
+            self.create_relationship(entity_or_relation)
 
     def create_entity(self, entity: Entity):
         with self.driver.session() as session:
@@ -276,6 +281,7 @@ class GraphQueryResolver(QueryResolver):
             WhereQuery: self.resolve_where,
             HowManyQuery: self.resolve_howmany,
             PredictQuery: self.resolve_predict,
+            FuzzyQuery: self.resolve_fuzzy,
         }
 
         try:
@@ -428,6 +434,49 @@ class GraphQueryResolver(QueryResolver):
                 Q(self.storage)
                 .match(e1[r] >> e2)
                 .where({e2.name: entity.name})
+                .get(e1, r, e2)
+            ):
+                relation = self._build_relation_from_triplet(t)
+
+                if relation.label == "is_a":
+                    yield relation
+                    entities.append(relation.entity_from)
+
+        for entity in entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e1.name: entity.name})
+                .get(e1, r, e2)
+            ):
+                relation = self._build_relation_from_triplet(t)
+                yield relation
+
+        for entity in entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e2.name: entity.name})
+                .get(e1, r, e2)
+            ):
+                relation = self._build_relation_from_triplet(t)
+                yield relation
+
+    def resolve_fuzzy(self, query: FuzzyQuery) -> Iterable[Relation]:
+        entities = list(query.entities)
+
+        # Expand entities to contain instances of is_a
+        for entity in query.entities:
+            e1, r, e2 = Q.vars("e1 r e2")
+
+            for t in (
+                Q(self.storage)
+                .match(e1[r] >> e2)
+                .where({e2.name: entity})
                 .get(e1, r, e2)
             ):
                 relation = self._build_relation_from_triplet(t)

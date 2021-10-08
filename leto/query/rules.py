@@ -5,6 +5,9 @@ from spacy import Language
 
 
 class RuleBasedQueryParser(QueryParser):
+    def __init__(self, *args) -> None:
+        pass
+
     @abstractmethod
     def _get_model(self) -> Language:
         pass

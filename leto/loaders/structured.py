@@ -1,3 +1,6 @@
+from typing import Iterable, List
+
+from pandas.core.frame import DataFrame
 from ..loaders import Loader
 import pandas as pd
 import numpy as np
@@ -14,6 +17,10 @@ class CSVLoader(Loader):
     def __init__(self, path: BytesIO) -> None:
         self.path = path
 
+    @classmethod
+    def title(cls):
+        return "From CSV Files"
+
     def infer_index(self):
         """infer an index column using uniqueness and text similarity to 'ID' and 'name'"""
         cand = [
@@ -27,7 +34,7 @@ class CSVLoader(Loader):
         cand.remove(self.index)
         self.cand = cand
 
-    def load(self):
+    def _load(self):
         """
         yields index column,'same_as',all unique columns
         yields index column,'has_property',all non unique columns
@@ -74,3 +81,26 @@ class CSVLoader(Loader):
                 label="is_a",
                 entity_to=Entity(str(self.index), type="THING"),
             )
+
+
+class MultiCSVLoader(Loader):
+    """Load entities and relations from one or more CSV files,
+    automatically inferring entity names, attributes, and relations.
+    """
+    def __init__(self, files: List[BytesIO]) -> None:
+        self.files = files
+
+    def _load(self) -> Iterable[Relation]:
+        dataframes = [pd.read_csv(fp) for fp in self.files]
+
+        # Assume dataframes are entities with attributes
+        for df in dataframes:
+            yield from self._entities_from_df(df)
+
+    def _entities_from_df(self, df: DataFrame):
+        columns = df.columns
+        name_col = columns
+
+    @classmethod
+    def title(cls):
+        return "From CSV files"

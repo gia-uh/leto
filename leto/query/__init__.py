@@ -10,6 +10,11 @@ from leto.model import Entity, Relation
 class Query(abc.ABC):
     pass
 
+@dataclass
+class FuzzyQuery(Query):
+    entities: List[str]
+    relations: List[str]
+    attributes: List[str]
 
 @dataclass
 class MatchQuery(Query):
@@ -78,5 +83,6 @@ class QueryParser(abc.ABC):
 
 def get_parsers():
     from leto.query.rules import SpanishRuleParser, EnglishRuleParser
+    from leto.query.fuzzy import FuzzyParser
 
     return [EnglishRuleParser, SpanishRuleParser]

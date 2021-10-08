@@ -12,10 +12,14 @@ class ManualLoader(Loader):
         entity[:type] - relation - entity[:type]
     """
 
+    @classmethod
+    def title(cls):
+        return "Manually enter tuples"
+
     def __init__(self, tuples: Text) -> None:
         self.tuples = tuples
 
-    def load(self):
+    def _load(self):
         for line in self.tuples.split("\n"):
             e1, r, e2 = line.split("-")
             e1 = e1.strip()
@@ -46,7 +50,11 @@ class ExampleLoader(Loader):
     *⚠️ This modifies the database permanently!*
     """
 
-    def load(self):
+    @classmethod
+    def title(cls):
+        return "Synthetic toy examples"
+
+    def _load(self):
         r = random.Random(0)
 
         # Ontology of Revolutions

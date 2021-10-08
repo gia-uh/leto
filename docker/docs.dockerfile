@@ -21,7 +21,7 @@ RUN mkdir -p /home/$USERNAME/.vscode-server/extensions \
         /home/$USERNAME/.vscode-server \
         /home/$USERNAME/.vscode-server-insiders
 
-COPY requirements.txt /home/$USERNAME/requirements.txt
+COPY docs-requirements.txt /home/$USERNAME/requirements.txt
 RUN pip install -r /home/$USERNAME/requirements.txt --index-url http://nexus.prod.uci.cu/repository/pypi-proxy/simple/ --trusted-host nexus.prod.uci.cu
 
 USER $USERNAME
