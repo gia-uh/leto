@@ -62,12 +62,6 @@ class QueryParser(abc.ABC):
         pass
 
 
-class QueryPreprocessor(abc.ABC):
-    @abc.abstractmethod
-    def preprocess(self, query:Query, storage) -> Query:
-        pass
-
-
 def get_parsers():
     from leto.query.rules import SpanishRuleParser, EnglishRuleParser
 

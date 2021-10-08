@@ -169,14 +169,7 @@ class GraphStorage(Storage):
 
 class GraphQueryResolver(QueryResolver):
     """
-    Usage:
-    ```python
-    app = GraphStorage()
-    resolver = GraphQueryResolver(app)
-    pprint(resolver.resolve(MatchQuery(["Closet", "Drawer", "Julio Cardaño"], match_relations=False)))
-    pprint(resolver.resolve(WhoQuery("Lorenzo Cardaño", "friendswith")))
-    pprint(resolver.resolve(WhatQuery("Closet", "have")))
-    ```
+    A query resolver attached to a Neo4j backend.
     """
 
     def __init__(self, storage: GraphStorage) -> None:
