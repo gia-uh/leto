@@ -205,12 +205,10 @@ class PredictVisualizer(Visualizer):
             return Visualization.Empty()
 
         entities = query.entities
-        terms = set(query.terms)
+        terms = set(query.attributes)
 
         target_attributes = set()
         features = set()
-        data = []
-        target = []
 
         for relation in response:
             attrs = set(relation.entity_from.attrs)
@@ -224,23 +222,30 @@ class PredictVisualizer(Visualizer):
             target_attributes.update(targets)
             features.update(attrs - targets)
 
+        data = []
+        targets = []
+
         for relation in response:
-            data.append(
-                {k: relation.entity_from.get(k) or relation.get(k) for k in features}
-            )
-            target.append(
-                {
+            datum = {k: relation.entity_from.get(k) or relation.get(k) for k in features}
+            target = {
                     k: relation.entity_from.get(k) or relation.get(k)
                     for k in target_attributes
                 }
-            )
+
+            if None in datum.values() or None in target.values():
+                continue
+
+            data.append(datum)
+            targets.append(target)
+
+        print(data, targets)
 
         def visualization():
             vect = DictVectorizer()
             X = vect.fit_transform(data)
 
             for attr in target_attributes:
-                y = [d.get(attr) for d in target]
+                y = [d.get(attr) for d in targets]
 
                 if isinstance(y[0], (int, float)):
                     model = LinearRegression()
