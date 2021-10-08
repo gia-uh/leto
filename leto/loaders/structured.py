@@ -87,6 +87,7 @@ class MultiCSVLoader(Loader):
     """Load entities and relations from one or more CSV files,
     automatically inferring entity names, attributes, and relations.
     """
+
     def __init__(self, files: List[BytesIO]) -> None:
         self.files = files
 

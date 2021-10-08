@@ -91,7 +91,7 @@ def load_data(storage):
 
     for line in metadata:
         if line:
-            k,v = line.split("=")
+            k, v = line.split("=")
             meta[k.strip()] = v.strip()
 
     if st.button("🚀 Run"):

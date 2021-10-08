@@ -10,11 +10,13 @@ from leto.model import Entity, Relation
 class Query(abc.ABC):
     pass
 
+
 @dataclass
 class FuzzyQuery(Query):
     entities: List[str]
     relations: List[str]
     attributes: List[str]
+
 
 @dataclass
 class MatchQuery(Query):
