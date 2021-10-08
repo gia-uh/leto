@@ -1,7 +1,7 @@
 import abc
 import uuid
-from typing import Iterable, List
-from leto.model import Entity, Relation
+from typing import Iterable, List, Union
+from leto.model import Entity, Relation, Source
 import datetime
 
 
@@ -10,23 +10,30 @@ class Loader(abc.ABC):
     def _load(self) -> Iterable[Relation]:
         pass
 
-    def load(self, **metadata) -> Iterable[Relation]:
+    @abc.abstractmethod
+    def _get_source(self, name, **metadata) -> Source:
+        pass
+
+    def load(self, **metadata) -> Iterable[Union[Entity, Relation]]:
         entities = set()
 
-        for relation in self._load():
-            yield relation
-            entities.add(relation.entity_from)
-            entities.add(relation.entity_to)
+        for entity_relation in self._load():
+            if isinstance(entity_relation, Entity):
+                entities.add(entity_relation)
+            else:
+                entities.add(entity_relation.entity_from)
+                entities.add(entity_relation.entity_to)
 
-        metadata = Entity(
-            f"Meta-{str(uuid.uuid4())}",
-            "_METADATA",
+            yield entity_relation
+
+        metadata = self._get_source(
+            str(uuid.uuid4()),
             created_on=datetime.datetime.now().astimezone(None).isoformat(),
             **metadata,
         )
 
         for entity in entities:
-            yield Relation("__metadata__", entity, metadata)
+            yield Relation("has_source", entity, metadata)
 
     @classmethod
     def title(cls):

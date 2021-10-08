@@ -1,7 +1,7 @@
 from typing import Iterable
 import spacy
 import wikipedia
-from leto.model import Entity, Relation
+from leto.model import Entity, Relation, Source
 from leto.loaders.unstructured import get_svo_tripplets, get_model
 from leto.loaders.unstructured import Language
 import subprocess
@@ -38,6 +38,9 @@ class WikipediaLoader(Loader):
     @classmethod
     def title(cls):
         return "From Wikipedia page"
+
+    def _get_source(self, name, **metadata) -> Source:
+        return Source(name, method="web", loader="WikipediaLoader", query=self.query, language=self.language, **metadata)
 
     def _load(self):
         if self.language is Language.es:
