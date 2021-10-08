@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from fuzzywuzzy import process
 from io import BytesIO
-from leto.model import Entity, Relation
+from leto.model import Entity, Relation, Source
 
 
 class CSVLoader(Loader):
@@ -90,6 +90,9 @@ class MultiCSVLoader(Loader):
 
     def __init__(self, files: List[BytesIO]) -> None:
         self.files = files
+
+    def _get_source(self, name, **metadata) -> Source:
+        return Source(name, method="csv", loader="MultiCSVLoader", **metadata)
 
     def _load(self) -> Iterable[Relation]:
         dataframes = [pd.read_csv(fp) for fp in self.files]

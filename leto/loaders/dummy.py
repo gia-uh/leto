@@ -1,7 +1,7 @@
 from leto.utils import Text
 from ..loaders import Loader
 
-from leto.model import Entity, Relation
+from leto.model import Entity, Relation, Source
 import random
 
 
@@ -18,6 +18,9 @@ class ManualLoader(Loader):
 
     def __init__(self, tuples: Text) -> None:
         self.tuples = tuples
+
+    def _get_source(self, name, **metadata) -> Source:
+        return Source(name, method="manual", loader="ManualLoader", **metadata)
 
     def _load(self):
         for line in self.tuples.split("\n"):
@@ -53,6 +56,9 @@ class ExampleLoader(Loader):
     @classmethod
     def title(cls):
         return "Synthetic toy examples"
+
+    def _get_source(self, name, **metadata) -> Source:
+        return Source(name, method="manual", loader="ExampleLoader", **metadata)
 
     def _load(self):
         r = random.Random(0)

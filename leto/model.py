@@ -66,3 +66,8 @@ class Relation:
 
     def __hash__(self) -> int:
         return hash(str(self))
+
+
+class Source(Entity):
+    def __init__(self, name: str, method:str, loader:str, **kwargs) -> None:
+        super().__init__(name, "Source", method=method, loader=loader, **kwargs)

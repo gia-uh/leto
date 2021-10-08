@@ -1,3 +1,4 @@
+from leto.model import Source
 import spacy
 import io
 from textacy.extract import subject_verb_object_triples
@@ -26,14 +27,17 @@ class SVOFromText(Loader):
     def title(cls):
         return "From Plain Text"
 
+    def _get_source(self, name, **metadata) -> Source:
+        return Source(name, method="text", loader="SVOFromText", **metadata)
+
     def _load(self):
         nlp = get_model(self.language)
 
         for subj, verb, obj in get_svo_tripplets(nlp, self.text):
             yield (
-                "_".join(s.text for s in subj),
-                "_".join(s.text for s in verb),
-                "_".join(s.text for s in obj),
+                "-".join(s.text for s in subj),
+                "-".join(s.text for s in verb),
+                "-".join(s.text for s in obj),
             )
 
 
@@ -50,15 +54,18 @@ class SVOFromFile(Loader):
     def title(cls):
         return "From Text File"
 
+    def _get_source(self, name, **metadata) -> Source:
+        return Source(name, method="text", loader="SVOFromFile", **metadata)
+
     def _load(self):
         nlp = get_model(self.language)
 
         for line in self.file.readlines():
             for subj, verb, obj in get_svo_tripplets(nlp, line.decode("utf8")):
                 yield (
-                    "_".join(s.text for s in subj),
-                    "_".join(s.text for s in verb),
-                    "_".join(s.text for s in obj),
+                    "-".join(s.text for s in subj),
+                    "-".join(s.text for s in verb),
+                    "-".join(s.text for s in obj),
                 )
 
 
