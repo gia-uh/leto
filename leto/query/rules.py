@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import Dict
 from leto.query import *
+from leto.utils import get_model
 from spacy import Language
 
 

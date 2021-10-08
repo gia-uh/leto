@@ -19,43 +19,22 @@ port = os.getenv("PORT", 7687)
 url = os.getenv("NEO4J_URI", f"bolt://neo4j:{port}")
 
 
+@st.experimental_singleton
+def get_neo4j_driver():
+    return GraphDatabase.driver(url, auth=basic_auth(username, password))
+
+
 class GraphStorage(Storage):
     """
-    GraphStorage:
-        class for handling operations concerning neo4j database. It wraps main functions as
-        creating nodes / relationships between them. With each wrap, Graph storage accepts
-        property dicts or even well formed where clauses, giving some flexibility degree.
-        As a more advanced option, the class exposes a method to run directly queries onto
-        the database server.
-
-    Usage:
-    ```python
-    app = GraphStorage()
-    raul = Entity("Raul Lala", "Person")
-    lorenzo = Entity("Lorenzo Cardaño", "Person", work="Raise dragons")
-    julio = Entity("Julio Cardaño", "Person", hobby="Fight dragons")
-
-    closet = Entity("Closet", "Thing")
-    drawer = Entity("Drawer", "Thing")
-
-    raul_friendswith_lorenzo = Relation("friendswith", raul, lorenzo, is_mutual = True)
-    raul_friendswith_julio = Relation("friendswith", raul, julio, is_mutual = True)
-    lorenzo_rivalswith_julio = Relation("rivalswith", lorenzo, julio, is_mutual = True)
-    lorenzo_have_closet = Relation("have", lorenzo, closet)
-    raul_uses_closet = Relation("use", raul, closet)
-    closet_have_drawer = Relation("have", closet, drawer, amount="many")
-
-    app.store(raul_friendswith_lorenzo)
-    app.store(raul_friendswith_julio)
-    app.store(lorenzo_rivalswith_julio)
-    app.store(lorenzo_have_closet)
-    app.store(raul_uses_closet)
-    app.store(closet_have_drawer)
-    ```
+    class for handling operations concerning neo4j database. It wraps main functions as
+    creating nodes / relationships between them. With each wrap, Graph storage accepts
+    property dicts or even well formed where clauses, giving some flexibility degree.
+    As a more advanced option, the class exposes a method to run directly queries onto
+    the database server.
     """
 
     def __init__(self):
-        self.driver = GraphDatabase.driver(url, auth=basic_auth(username, password))
+        self.driver = get_neo4j_driver()
 
     def close(self):
         self.driver.close()

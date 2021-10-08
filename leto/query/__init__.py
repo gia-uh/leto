@@ -1,5 +1,4 @@
 import abc
-from leto.utils import get_model
 from dataclasses import dataclass
 from typing import Iterable, List
 
@@ -60,6 +59,12 @@ class QueryResolver(abc.ABC):
 class QueryParser(abc.ABC):
     @abc.abstractmethod
     def parse(self, query: str) -> Query:
+        pass
+
+
+class QueryPreprocessor(abc.ABC):
+    @abc.abstractmethod
+    def preprocess(self, query:Query, storage) -> Query:
         pass
 
 
