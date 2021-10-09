@@ -1,7 +1,6 @@
 import abc
 from dataclasses import dataclass
 from typing import Iterable, List
-
 from leto.model import Entity, Relation
 
 

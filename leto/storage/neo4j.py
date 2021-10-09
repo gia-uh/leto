@@ -1,4 +1,5 @@
 import os
+import collections
 from typing import Iterable, Tuple, Union
 from leto.model import Entity, Relation
 from leto.query import (
@@ -6,6 +7,7 @@ from leto.query import (
     QueryResolver,
 )
 from leto.storage import Storage
+from leto.utils import get_model
 
 from neo4j import GraphDatabase, basic_auth
 
@@ -24,9 +26,63 @@ def get_neo4j_driver():
     return GraphDatabase.driver(url, auth=basic_auth(username, password))
 
 
+class EmbeddingMap:
+    def __init__(self, storage=None) -> None:
+        self.entities = {}
+        self.relations = {}
+        self.model = get_model()
+
+        if storage is not None:
+            with st.spinner("Loading relationships"):
+                for relation in storage.get_relationship_types():
+                    self.register_relation(relation)
+
+                for entity in storage.get_entity_names():
+                    self.register_entity(entity)
+
+    def register_entity(self, entity: str):
+        doc = self.model(entity.replace("_", " "))
+        self.entities[entity] = doc
+
+    def solve_entity(self, entity):
+        best_match = 0
+        match = None
+
+        for key, doc in self.entities.items():
+            similarity = doc.similarity(entity)
+
+            if similarity > best_match:
+                best_match = similarity
+                match = key
+
+        return match
+
+    def register_relation(self, relation: str):
+        doc = self.model(relation.replace("_", " "))
+        self.relations[relation] = doc
+
+    def solve_relation(self, relation):
+        best_match = 0
+        match = None
+
+        for key, doc in self.relations.items():
+            similarity = doc.similarity(relation)
+
+            if similarity > best_match:
+                best_match = similarity
+                match = key
+
+        return match
+
+
+@st.experimental_singleton
+def embedding_map(_storage=None):
+    return EmbeddingMap(_storage)
+
+
 class GraphStorage(Storage):
     """
-    class for handling operations concerning neo4j database. It wraps main functions as
+    Class for handling operations concerning neo4j database. It wraps main functions as
     creating nodes / relationships between them. With each wrap, Graph storage accepts
     property dicts or even well formed where clauses, giving some flexibility degree.
     As a more advanced option, the class exposes a method to run directly queries onto
@@ -35,6 +91,7 @@ class GraphStorage(Storage):
 
     def __init__(self):
         self.driver = get_neo4j_driver()
+        self.embedding_map = embedding_map(self)
 
     def close(self):
         self.driver.close()
@@ -42,6 +99,30 @@ class GraphStorage(Storage):
     def _get_size(self, tx):
         for record in tx.run("MATCH (n1)-[r]->(n2) RETURN count(r)"):
             return record.values()[0]
+
+    def get_relationship_types(self):
+        with self.driver.session() as session:
+            return session.read_transaction(self._get_relationship_types)
+
+    def get_entity_names(self):
+        with self.driver.session() as session:
+            return session.read_transaction(self._get_entity_names)
+
+    def _get_entity_names(self, tx):
+        results = []
+
+        for record in tx.run("MATCH (e1) RETURN e1.name"):
+            results.append(record["e1.name"])
+
+        return results
+
+    def _get_relationship_types(self, tx):
+        results = []
+
+        for record in tx.run("CALL db.relationshipTypes()"):
+            results.append(record["relationshipType"])
+
+        return results
 
     @property
     def size(self):
@@ -58,6 +139,8 @@ class GraphStorage(Storage):
             self.create_relationship(entity_or_relation)
 
     def create_entity(self, entity: Entity):
+        self.embedding_map.register_entity(entity.name)
+
         with self.driver.session() as session:
             attrs = entity.attrs.copy()
             result = session.read_transaction(
@@ -73,6 +156,8 @@ class GraphStorage(Storage):
             return result[0]
 
     def create_relationship(self, relation: Relation):
+        self.embedding_map.register_relation(relation.label)
+
         with self.driver.session() as session:
             # Write transactions allow the driver to handle retries and transient errors
             result = session.write_transaction(
@@ -174,6 +259,7 @@ class GraphQueryResolver(QueryResolver):
 
     def __init__(self, storage: GraphStorage) -> None:
         self.storage = storage
+        self.embedding_map = embedding_map()
 
     def _make_triplet_reader(
         self, entity_from_tag: str, relation_tag: str, entity_to_tag: str
@@ -236,7 +322,29 @@ class GraphQueryResolver(QueryResolver):
             results.append(self._build_entity_from_node(single))
         return results
 
+    def _preprocess_query(self, query:Query):
+        relations = set()
+
+        for relation in query.relations:
+            match = self.embedding_map.solve_relation(relation)
+
+            if match:
+                relations.add(match)
+
+        query.relations = list(relations)
+
+        entities = set()
+
+        for entity in query.entities:
+            match = self.embedding_map.solve_entity(entity)
+
+            if match:
+                entities.add(match)
+
+        query.entities = list(entities)
+
     def _resolve(self, query: Query) -> Iterable[Relation]:
+        self._preprocess_query(query)
         entities = list(query.entities)
 
         # Expand entities to contain instances of is_a
@@ -246,7 +354,7 @@ class GraphQueryResolver(QueryResolver):
             for t in (
                 Q(self.storage)
                 .match(e1[r] >> e2)
-                .where({e2.name: entity})
+                .where({e2.name: str(entity)})
                 .get(e1, r, e2)
             ):
                 relation = self._build_relation_from_triplet(t)
@@ -261,7 +369,7 @@ class GraphQueryResolver(QueryResolver):
             for t in (
                 Q(self.storage)
                 .match(e1[r] >> e2)
-                .where({e1.name: entity})
+                .where({e1.name: str(entity)})
                 .get(e1, r, e2)
             ):
                 relation = self._build_relation_from_triplet(t)
@@ -273,7 +381,7 @@ class GraphQueryResolver(QueryResolver):
             for t in (
                 Q(self.storage)
                 .match(e1[r] >> e2)
-                .where({e2.name: entity})
+                .where({e2.name: str(entity)})
                 .get(e1, r, e2)
             ):
                 relation = self._build_relation_from_triplet(t)
