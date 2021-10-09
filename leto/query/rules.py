@@ -23,7 +23,7 @@ class RuleBasedQueryParser(QueryParser):
         while words[0].pos_ == "DET":
             words.pop(0)
 
-        return e[:-len(words)]
+        return e[: -len(words)]
 
     def parse(self, query: str) -> Query:
         nlp = self._get_model()

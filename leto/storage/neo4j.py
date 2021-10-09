@@ -322,7 +322,7 @@ class GraphQueryResolver(QueryResolver):
             results.append(self._build_entity_from_node(single))
         return results
 
-    def _preprocess_query(self, query:Query):
+    def _preprocess_query(self, query: Query):
         relations = set()
 
         for relation in query.relations:
