@@ -23,7 +23,7 @@ class RuleBasedQueryParser(QueryParser):
         while words[0].pos_ == "DET":
             words.pop(0)
 
-        return e[:-len(words)]
+        return e[: -len(words)]
 
     def parse(self, query: str) -> Query:
         nlp = self._get_model()
@@ -41,7 +41,9 @@ class RuleBasedQueryParser(QueryParser):
         for query_type, hints in query_hints.items():
             found_hints = len([token.lemma_ for token in doc if token.lemma_ in hints])
             if found_hints > best_query_matches:
-                best_query = query_type(entities=entities, relations=relations, attributes=attributes)
+                best_query = query_type(
+                    entities=entities, relations=relations, attributes=attributes
+                )
                 best_query_matches = found_hints
 
         if best_query is not None:

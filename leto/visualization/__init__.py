@@ -226,11 +226,13 @@ class PredictVisualizer(Visualizer):
         targets = []
 
         for relation in response:
-            datum = {k: relation.entity_from.get(k) or relation.get(k) for k in features}
+            datum = {
+                k: relation.entity_from.get(k) or relation.get(k) for k in features
+            }
             target = {
-                    k: relation.entity_from.get(k) or relation.get(k)
-                    for k in target_attributes
-                }
+                k: relation.entity_from.get(k) or relation.get(k)
+                for k in target_attributes
+            }
 
             if None in datum.values() or None in target.values():
                 continue
