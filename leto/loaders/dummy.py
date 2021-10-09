@@ -83,13 +83,13 @@ class ExampleLoader(Loader):
         yield Relation("has_location", RusianRevolution, Russia)
 
         FidelCastro = Entity("Fidel Castro", "Person", birth_date="1913-08-13")
-        yield Relation("lead", FidelCastro, CubanRevolution)
+        yield Relation("leader_of", FidelCastro, CubanRevolution)
 
         Lenin = Entity("Vladimir Illich Lenin", "Person", birth_date="1870-03-21")
-        yield Relation("lead", Lenin, RusianRevolution)
+        yield Relation("leader_of", Lenin, RusianRevolution)
 
-        yield Relation("influence", Lenin, FidelCastro)
-        yield Relation("influence", RusianRevolution, CubanRevolution)
+        yield Relation("influenced_by", FidelCastro, Lenin)
+        yield Relation("inspired_by", CubanRevolution, RusianRevolution)
 
         # Jobs data
         DataScientist = Entity("DataScientist", "Thing", abstract=True)

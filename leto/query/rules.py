@@ -23,15 +23,15 @@ class RuleBasedQueryParser(QueryParser):
         while words[0].pos_ == "DET":
             words.pop(0)
 
-        return " ".join(tok.text for tok in words)
+        return e[:-len(words)]
 
     def parse(self, query: str) -> Query:
         nlp = self._get_model()
         doc = nlp(query)
 
-        entities = [self._make_entity(e) for e in doc.ents]
-        relations = [token.lemma_ for token in doc if token.pos_ in ["VERB"]]
-        attributes = [token.lemma_ for token in doc if token.pos_ in ["NOUN"]]
+        entities = [e for e in doc.ents] or [n for n in doc.noun_chunks]
+        relations = [token for token in doc if token.pos_ in ["VERB", "NOUN"]]
+        attributes = [token for token in doc if token.pos_ in ["NOUN", "ADJ"]]
 
         query_hints = self._get_query_hints()
 
