@@ -5,6 +5,7 @@ from ..loaders import Loader
 import pandas as pd
 import numpy as np
 from fuzzywuzzy import process
+from itertools import permutations
 from io import BytesIO
 from leto.model import Entity, Relation, Source
 
@@ -52,8 +53,7 @@ class CSVLoader(Loader):
             yield Relation(
                 entity_from=Entity(str(self.index), type="THING"),
                 label="same_as",
-                entity_to=Entity(str(col)),
-                type="THING",
+                entity_to=Entity(str(col), type="THING"),
             )
 
         properties = [x for x in self.col if (x not in self.cand + [self.index])]
@@ -94,16 +94,132 @@ class MultiCSVLoader(Loader):
     def _get_source(self, name, **metadata) -> Source:
         return Source(name, method="csv", loader="MultiCSVLoader", **metadata)
 
-    def _load(self) -> Iterable[Relation]:
-        dataframes = [pd.read_csv(fp) for fp in self.files]
+    @staticmethod
+    def infer_index(df):
+        """infer an index column using uniqueness and text simildef finite_cycle(iter: Iterable, t: int) -> Iterable:
+    for i in range(t):
+        yield from iterarity to 'ID' and 'name'"""
+        cand = [
+            x for x in df.columns if df[x].is_unique and str(df[x].dtype) == "object"
+        ]
+        similarity_name = process.extractOne("name", cand)
+        similarity_id = process.extractOne("id", cand)
+        index = max([similarity_name, similarity_id], key=lambda x: x[1])[0]
+        cand.remove(index)
+        properties = [x for x in df.columns if (x not in cand + [index])]
+        return index, cand, properties
 
-        # Assume dataframes are entities with attributes
-        for df in dataframes:
-            yield from self._entities_from_df(df)
+    def _load(self):  # -> Iterable[Relation]:
+        dataframes = {
+            fp.name.split("/")[-1].split(".")[0]: pd.read_csv(fp) for fp in self.files
+        }
 
-    def _entities_from_df(self, df: DataFrame):
-        columns = df.columns
-        name_col = columns
+        def update_columns():
+            column_partition = {}
+            columns = {
+                (df_name, col): {
+                    "is_unique": df[col].is_unique,
+                    "col_type": str(df[col].dtype),
+                    "values": set(df[col].values),
+                    "is_index": False,
+                    "is_cand": False,
+                }
+                for df_name, df in dataframes.items()
+                for col in df.columns
+            }
+            for df_name, df in dataframes.items():
+                index, cand, properties = self.infer_index(df)
+                column_partition[df_name] = {
+                    "index": index,
+                    "cand": cand,
+                    "properties": properties,
+                }
+                columns[(df_name, index)]["is_index"] = True
+                for col in cand:
+                    columns[(df_name, col)]["is_cand"] = True
+            return columns, column_partition
+
+        columns, column_partition = update_columns()
+
+        for df_name, df in dataframes.items():
+            index, cand, properties = self.infer_index(df)
+            for col in cand:
+                yield Relation(
+                    entity_from=Entity(str(index), type="THING"),
+                    label="same_as",
+                    entity_to=Entity(str(col), type="THING"),
+                )
+            for col in properties:
+                yield Relation(
+                    entity_from=Entity(str(index), type="THING"),
+                    label="has_property",
+                    entity_to=Entity(str(col), type="PROP"),
+                )
+            for col in [index] + cand + properties:
+                yield Relation(
+                    entity_from=Entity(
+                        str(col), type="PROP" if col in properties else "THING"
+                    ),
+                    label="is_a",
+                    entity_to=Entity(str(df[col].dtype), type="TYPE"),
+                )
+
+        # Infer foreign keys from dataframes
+        for i in range(len(dataframes)):
+            for ((df_name1, col1), prop1), ((df_name2, col2), prop2) in permutations(
+                columns.items(), r=2
+            ):
+
+                if (
+                    df_name1 != df_name2
+                    and (prop2["is_index"] or prop2["is_cand"])
+                    and prop1["values"].issubset(prop2["values"])
+                ):
+
+                    yield Relation(
+                        entity_from=Entity(str(col1), type="THING"),
+                        label="same_as",
+                        entity_to=Entity(str(col2), type="THING"),
+                    )
+                    _df = pd.merge(
+                        dataframes[df_name1],
+                        dataframes[df_name2],
+                        left_on=col1,
+                        right_on=col2,
+                        how="left",
+                        suffixes=["", "_"],
+                    )
+                    dataframes[df_name1] = _df[[x for x in _df if x[-1] != "_"]]
+
+                columns, column_partition = update_columns()
+
+        for df_name, df in dataframes.items():
+            for i, row in df.iterrows():
+                prop = row[
+                    [
+                        x
+                        for x in df.columns
+                        if x
+                        not in [column_partition[df_name]["index"]]
+                        + column_partition[df_name]["cand"]
+                    ]
+                ].to_dict()
+                prop["alt_id"] = row[column_partition[df_name]["cand"]].to_dict()
+
+                entity_from = Entity(
+                    name=str(row.at[str(column_partition[df_name]["index"])]),
+                    type="THING",
+                    **prop
+                )
+                # yield
+                yield Relation(
+                    entity_from=entity_from,
+                    label="is_a",
+                    entity_to=Entity(
+                        str(column_partition[df_name]["index"]), type="THING"
+                    ),
+                )
+
 
     @classmethod
     def title(cls):
