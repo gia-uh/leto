@@ -5,9 +5,27 @@ from ..loaders import Loader
 import pandas as pd
 import numpy as np
 from fuzzywuzzy import process
-from itertools import permutations
+from itertools import permutations, product
 from io import BytesIO
 from leto.model import Entity, Relation, Source
+from collections import Mapping
+
+
+class FrozenDict(Mapping):
+    def __init__(self, *args, **kwargs):
+        self._d = dict(*args, **kwargs)
+
+    def __iter__(self):
+        return iter(self._d)
+
+    def __len__(self):
+        return len(self._d)
+
+    def __getitem__(self, key):
+        return self._d[key]
+
+    def __hash__(self):
+        return hash(tuple(sorted(self._d.items())))
 
 
 class CSVLoader(Loader):
@@ -120,7 +138,7 @@ class MultiCSVLoader(Loader):
                 (df_name, col): {
                     "is_unique": df[col].is_unique,
                     "col_type": str(df[col].dtype),
-                    "values": set(df[col].values),
+                    "values": set(df[col].values),  # .remove(None),
                     "is_index": False,
                     "is_cand": False,
                 }
@@ -145,42 +163,67 @@ class MultiCSVLoader(Loader):
             index, cand, properties = self.infer_index(df)
             for col in cand:
                 yield Relation(
-                    entity_from=Entity(str(index), type="THING"),
+                    entity_from=Entity(".".join([df_name, str(index)]), type="THING"),
                     label="same_as",
-                    entity_to=Entity(str(col), type="THING"),
+                    entity_to=Entity(".".join([df_name, str(col)]), type="THING"),
                 )
             for col in properties:
                 yield Relation(
-                    entity_from=Entity(str(index), type="THING"),
+                    entity_from=Entity(".".join([df_name, str(index)]), type="THING"),
                     label="has_property",
-                    entity_to=Entity(str(col), type="PROP"),
+                    entity_to=Entity(".".join([df_name, str(col)]), type="PROP"),
                 )
             for col in [index] + cand + properties:
                 yield Relation(
                     entity_from=Entity(
-                        str(col), type="PROP" if col in properties else "THING"
+                        ".".join([df_name, str(col)]),
+                        type="PROP" if col in properties else "THING",
                     ),
                     label="is_a",
-                    entity_to=Entity(str(df[col].dtype), type="TYPE"),
+                    entity_to=Entity(
+                        ".".join([df_name, str(df[col].dtype)]), type="TYPE"
+                    ),
                 )
 
-        # Infer foreign keys from dataframes
+        dataframes = {
+            df_name: df.rename(lambda x: ".".join([df_name, x]), axis="columns")
+            for df_name, df in dataframes.items()
+        }
+        columns = {
+            (df_name, ".".join([df_name, col])): prop
+            for ((df_name, col), prop) in columns.items()
+        }
+
+        foreign_keys = set()
+
         for i in range(len(dataframes)):
+
             for ((df_name1, col1), prop1), ((df_name2, col2), prop2) in permutations(
                 columns.items(), r=2
             ):
-
                 if (
                     df_name1 != df_name2
                     and (prop2["is_index"] or prop2["is_cand"])
                     and prop1["values"].issubset(prop2["values"])
                 ):
-
-                    yield Relation(
-                        entity_from=Entity(str(col1), type="THING"),
-                        label="same_as",
-                        entity_to=Entity(str(col2), type="THING"),
+                    foreign_keys.add(
+                        FrozenDict(
+                            **{
+                                "key": col1,
+                                "from": df_name1,
+                                "to": df_name2,
+                                "in": col2,
+                            }
+                        )
                     )
+                    yield Relation(
+                        entity_from=Entity(
+                            ".".join([df_name1, str(col1)]), type="THING"
+                        ),
+                        label="same_as",
+                        entity_to=Entity(".".join([df_name2, str(col2)]), type="THING"),
+                    )
+
                     _df = pd.merge(
                         dataframes[df_name1],
                         dataframes[df_name2],
@@ -193,6 +236,7 @@ class MultiCSVLoader(Loader):
 
                 columns, column_partition = update_columns()
 
+        entities = {}
         for df_name, df in dataframes.items():
             for i, row in df.iterrows():
                 prop = row[
@@ -211,15 +255,26 @@ class MultiCSVLoader(Loader):
                     type="THING",
                     **prop
                 )
+                if not entities.get(df_name):
+                    entities[df_name] = []
+                entities[df_name].append(entity_from)
                 # yield
                 yield Relation(
                     entity_from=entity_from,
                     label="is_a",
                     entity_to=Entity(
-                        str(column_partition[df_name]["index"]), type="THING"
+                        str(".".join([df_name, column_partition[df_name]["index"]])),
+                        type="THING",
                     ),
                 )
-
+        for k in foreign_keys:
+            e_from = entities[k["from"]]
+            e_to = entities[k["to"]]
+            for e_f, e_t in product(e_from, e_to):
+                if e_f.get(k["key"]) in [e_t.name] + list(e_t.get("alt_id").values()):
+                    yield Relation(
+                        entity_from=e_f, label=k["key"], entity_to=e_t,
+                    )
 
     @classmethod
     def title(cls):
