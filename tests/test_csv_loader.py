@@ -10,6 +10,7 @@ def load_files(*filenames: List[str]):
     return [open(datapath / fname) for fname in filenames]
 
 
+<<<<<<< HEAD
 single_loader = MultiCSVLoader(files=load_files("single_file.csv"))
 single_tuples = list(single_loader.load())
 multi_loader = MultiCSVLoader(
@@ -71,3 +72,10 @@ def test_load_foreign_key():
         and x.entity_to.type == "THING"
         and x.label == "students_mentor"
     ]
+=======
+# def test_load_entities_from_one_file():
+#     loader = MultiCSVLoader(files=load_files("single_file.csv"))
+#     tuples = list(loader.load())
+
+#     assert tuples[0]
+>>>>>>> 6d65b1b (Update tests)
