@@ -50,13 +50,16 @@ extra:
 copyright: "&copy; 2021 - University of Alicante & University of Havana"
 
 markdown_extensions:
-  - codehilite
   - toc:
       permalink: True
   - admonition
   - pymdownx.emoji:
       emoji_index: !!python/name:materialx.emoji.twemoji
       emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.snippets
 
 nav:
   - 🏠 Home: index.md
