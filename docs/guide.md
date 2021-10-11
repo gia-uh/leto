@@ -1,4 +1,4 @@
-# Welcome the LETO MVP user guide
+# Welcome to LETO's user guide
 
 This guide explains how to set up LETO and use its main application UI.
 
