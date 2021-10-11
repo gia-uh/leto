@@ -60,3 +60,25 @@ All the interaction with LETO is through natural language queries. You type a qu
 
 The most basic output, as shown in the image, is a subset of the knowledge graph that contains the relevant entities and relations.
 Highlighted in different colors you will find the most important elements according to the query, e.g., the entities and relations that are explicitely mentioned, or those which are very similar.
+
+According to the query and the information available, LETO will try to come up with interesting visualizations.
+For example, if there's geographical information in the answer, you'll see it in a map.
+
+As an extreme example, a query like "which features predict salary in Data Scientist" will make LETO train a simple machine learning model on the available data and graph the feature importances for you.
+
+![Visualizing feature importances](../img/visualization.png)
+
+### ❓ Example queries
+
+If you've loaded the toy dataset (using the "Synthetic toy examples" loader), you can use one of the pre-defined queries at the right side of LETO's main UI.
+These are premade questions that illustrate the types of queries that can be posted to LETO.
+
+## Interacting with the backend
+
+If you want to interact with the backend data, at <http://localhost:7474> you will find neo4j's browser interface.
+To connect just enter the username `neo4j` and the password `12345678`.
+
+Neo4j is a graph database that powers all of LETO's queries. Refer to the [official documentation](https://neo4j.com/docs/) for more information on how to use its interface directly.
+
+!!! warning
+    Please keep in mind that if you modify the database outside of LETO (i.e., not using one of LETO's loaders), we cannot guarantee the graph will be in a consistent state that LETO can interpret. Tinker with it at your own risk.
