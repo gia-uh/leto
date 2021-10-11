@@ -115,8 +115,8 @@ class MultiCSVLoader(Loader):
     @staticmethod
     def infer_index(df):
         """infer an index column using uniqueness and text simildef finite_cycle(iter: Iterable, t: int) -> Iterable:
-    for i in range(t):
-        yield from iterarity to 'ID' and 'name'"""
+        for i in range(t):
+            yield from iterarity to 'ID' and 'name'"""
         cand = [
             x for x in df.columns if df[x].is_unique and str(df[x].dtype) == "object"
         ]
@@ -273,7 +273,9 @@ class MultiCSVLoader(Loader):
             for e_f, e_t in product(e_from, e_to):
                 if e_f.get(k["key"]) in [e_t.name] + list(e_t.get("alt_id").values()):
                     yield Relation(
-                        entity_from=e_f, label=k["key"], entity_to=e_t,
+                        entity_from=e_f,
+                        label=k["key"],
+                        entity_to=e_t,
                     )
 
     @classmethod
