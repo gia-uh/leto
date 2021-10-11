@@ -1,4 +1,4 @@
-from leto.model import Source
+from leto.model import Entity, Relation, Source
 import spacy
 import io
 from textacy.extract import subject_verb_object_triples
@@ -34,10 +34,10 @@ class SVOFromText(Loader):
         nlp = get_model(self.language)
 
         for subj, verb, obj in get_svo_tripplets(nlp, self.text):
-            yield (
-                "-".join(s.text for s in subj),
-                "-".join(s.text for s in verb),
-                "-".join(s.text for s in obj),
+            yield Relation(
+                label="_".join(s.lemma_ for s in verb),
+                entity_from=Entity("_".join(s.text for s in subj), "Thing"),
+                entity_to=Entity("_".join(s.text for s in obj), "Thing"),
             )
 
 
@@ -62,10 +62,10 @@ class SVOFromFile(Loader):
 
         for line in self.file.readlines():
             for subj, verb, obj in get_svo_tripplets(nlp, line.decode("utf8")):
-                yield (
-                    "-".join(s.text for s in subj),
-                    "-".join(s.text for s in verb),
-                    "-".join(s.text for s in obj),
+                yield Relation(
+                    label="_".join(s.lemma_ for s in verb),
+                    entity_from=Entity("_".join(s.text for s in subj), "Thing"),
+                    entity_to=Entity("_".join(s.text for s in obj), "Thing"),
                 )
 
 
@@ -81,12 +81,3 @@ def get_svo_tripplets(nlp: spacy.Language, text: str):
     """
     doc = nlp(text)
     return subject_verb_object_triples(doc)
-
-
-"""
-Usage Example:
-
-nlp = get_model("en_core_web_sm")
-for triplet in get_svo_tripplets(nlp, "The user knows nothing, and yet, owns a lot. The sister does not like cookies"):
-    print(triplet)
-"""
