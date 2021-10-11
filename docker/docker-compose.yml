@@ -14,6 +14,21 @@ services:
       - vscode-leto:/home/coder/.vscode-server
     working_dir: "/home/coder/leto"
     command: ["streamlit", "run", "leto.py"]
+    depends_on:
+      - neo4j
+
+  docs:
+    image: letoai/docs:latest
+    container_name: leto-docs
+    build:
+      dockerfile: docs.dockerfile
+      context: .
+    ports:
+      - 8000:8000
+    volumes:
+      - ..:/home/coder/leto
+    working_dir: "/home/coder/leto"
+    command: ["mkdocs", "serve", "-a", "0.0.0.0:8000"]
 
   neo4j:
     image: neo4j:latest

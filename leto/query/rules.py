@@ -1,10 +1,14 @@
 from abc import abstractmethod
 from typing import Dict
 from leto.query import *
+from leto.utils import get_model
 from spacy import Language
 
 
 class RuleBasedQueryParser(QueryParser):
+    def __init__(self, *args) -> None:
+        pass
+
     @abstractmethod
     def _get_model(self) -> Language:
         pass
@@ -19,14 +23,15 @@ class RuleBasedQueryParser(QueryParser):
         while words[0].pos_ == "DET":
             words.pop(0)
 
-        return Entity(" ".join(tok.text for tok in words), e.label_)
+        return e[: -len(words)]
 
     def parse(self, query: str) -> Query:
         nlp = self._get_model()
         doc = nlp(query)
 
-        entities = [self._make_entity(e) for e in doc.ents]
-        terms = [token.lemma_ for token in doc if token.pos_ in ["NOUN", "VERB"]]
+        entities = [e for e in doc.ents] or [n for n in doc.noun_chunks]
+        relations = [token for token in doc if token.pos_ in ["VERB", "NOUN"]]
+        attributes = [token for token in doc if token.pos_ in ["NOUN", "ADJ"]]
 
         query_hints = self._get_query_hints()
 
@@ -36,13 +41,15 @@ class RuleBasedQueryParser(QueryParser):
         for query_type, hints in query_hints.items():
             found_hints = len([token.lemma_ for token in doc if token.lemma_ in hints])
             if found_hints > best_query_matches:
-                best_query = query_type(entities=entities, terms=terms)
+                best_query = query_type(
+                    entities=entities, relations=relations, attributes=attributes
+                )
                 best_query_matches = found_hints
 
         if best_query is not None:
             return best_query
 
-        return MatchQuery(entities=entities, terms=terms)
+        return Query(entities=entities, relations=relations, attributes=attributes)
 
 
 class SpanishRuleParser(RuleBasedQueryParser):

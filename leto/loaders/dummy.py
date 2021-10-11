@@ -1,7 +1,7 @@
 from leto.utils import Text
 from ..loaders import Loader
 
-from leto.model import Entity, Relation
+from leto.model import Entity, Relation, Source
 import random
 
 
@@ -12,10 +12,17 @@ class ManualLoader(Loader):
         entity[:type] - relation - entity[:type]
     """
 
+    @classmethod
+    def title(cls):
+        return "Manually enter tuples"
+
     def __init__(self, tuples: Text) -> None:
         self.tuples = tuples
 
-    def load(self):
+    def _get_source(self, name, **metadata) -> Source:
+        return Source(name, method="manual", loader="ManualLoader", **metadata)
+
+    def _load(self):
         for line in self.tuples.split("\n"):
             e1, r, e2 = line.split("-")
             e1 = e1.strip()
@@ -46,7 +53,14 @@ class ExampleLoader(Loader):
     *⚠️ This modifies the database permanently!*
     """
 
-    def load(self):
+    @classmethod
+    def title(cls):
+        return "Synthetic toy examples"
+
+    def _get_source(self, name, **metadata) -> Source:
+        return Source(name, method="manual", loader="ExampleLoader", **metadata)
+
+    def _load(self):
         r = random.Random(0)
 
         # Ontology of Revolutions
@@ -69,13 +83,13 @@ class ExampleLoader(Loader):
         yield Relation("has_location", RusianRevolution, Russia)
 
         FidelCastro = Entity("Fidel Castro", "Person", birth_date="1913-08-13")
-        yield Relation("lead", FidelCastro, CubanRevolution)
+        yield Relation("leader_of", FidelCastro, CubanRevolution)
 
         Lenin = Entity("Vladimir Illich Lenin", "Person", birth_date="1870-03-21")
-        yield Relation("lead", Lenin, RusianRevolution)
+        yield Relation("leader_of", Lenin, RusianRevolution)
 
-        yield Relation("influence", Lenin, FidelCastro)
-        yield Relation("influence", RusianRevolution, CubanRevolution)
+        yield Relation("influenced_by", FidelCastro, Lenin)
+        yield Relation("inspired_by", CubanRevolution, RusianRevolution)
 
         # Jobs data
         DataScientist = Entity("DataScientist", "Thing", abstract=True)

@@ -30,7 +30,7 @@ class Visualization:
         self.run = run
 
     def visualize(self):
-        with st.beta_expander(self.title, self.score > 0):
+        with st.expander(self.title, self.score > 0):
             self.run()
 
     def valid(self) -> bool:
@@ -63,7 +63,7 @@ class GraphVisualizer(Visualizer):
         def visualization():
             graph = graphviz.Digraph()
 
-            entities = set(e.name for e in query.entities)
+            entities = set(query.entities)
             main_entities = set()
 
             for tuple in response:
@@ -156,9 +156,9 @@ class CountVisualizer(Visualizer):
         if not isinstance(query, HowManyQuery):
             return Visualization.Empty()
 
-        entities = set(e.name for e in query.entities)
-        field = query.field
-        attributes = query.attributes
+        entities = set(str(e) for e in query.entities)
+        field = str(query.attributes[0])
+        attributes = [str(a) for a in query.attributes[1:]]
 
         data = []
 
@@ -205,12 +205,10 @@ class PredictVisualizer(Visualizer):
             return Visualization.Empty()
 
         entities = query.entities
-        terms = set(query.terms)
+        terms = set(str(a) for a in query.attributes)
 
         target_attributes = set()
         features = set()
-        data = []
-        target = []
 
         for relation in response:
             attrs = set(relation.entity_from.attrs)
@@ -224,23 +222,32 @@ class PredictVisualizer(Visualizer):
             target_attributes.update(targets)
             features.update(attrs - targets)
 
+        data = []
+        targets = []
+
         for relation in response:
-            data.append(
-                {k: relation.entity_from.get(k) or relation.get(k) for k in features}
-            )
-            target.append(
-                {
-                    k: relation.entity_from.get(k) or relation.get(k)
-                    for k in target_attributes
-                }
-            )
+            datum = {
+                k: relation.entity_from.get(k) or relation.get(k) for k in features
+            }
+            target = {
+                k: relation.entity_from.get(k) or relation.get(k)
+                for k in target_attributes
+            }
+
+            if None in datum.values() or None in target.values():
+                continue
+
+            data.append(datum)
+            targets.append(target)
+
+        print(data, targets)
 
         def visualization():
             vect = DictVectorizer()
             X = vect.fit_transform(data)
 
             for attr in target_attributes:
-                y = [d.get(attr) for d in target]
+                y = [d.get(attr) for d in targets]
 
                 if isinstance(y[0], (int, float)):
                     model = LinearRegression()

@@ -20,16 +20,16 @@ def bootstrap():
     st.title("🧠 LETO: Learning Engine Through Ontologies")
 
     with st.sidebar:
-        with st.beta_expander("⚙️ Config", False):
+        with st.expander("⚙️ Config", False):
             storages = {cls.__name__: cls for cls in get_storages()}
             storage_cls = storages[st.selectbox("💾 Storage driver", list(storages))]
             storage: Storage = _build_cls(storage_cls)
-            st.write(f"Current size: {storage.size} tuples")
+            st.metric(f"Current size (tuples)", storage.size)
             parsers = {cls.__name__: cls for cls in get_parsers()}
             parser_cls = parsers[st.selectbox("🧙‍♂️ Query parser", list(parsers))]
-            parser: QueryParser = parser_cls()
+            parser: QueryParser = parser_cls(storage)
 
-        with st.beta_expander("🔥 Load new data", True):
+        with st.expander("🔥 Load new data", True):
             load_data(storage)
 
     resolver: QueryResolver = storage.get_query_resolver()
@@ -41,36 +41,24 @@ def bootstrap():
         PredictVisualizer(),
     ]
 
-    main, side = st.beta_columns((2, 1))
+    main, side = st.columns((2, 1))
 
     with side:
-        with st.beta_expander("❓ Example queries", True):
-            st.info(
-                "If you have loaded the example data, you can try some of these queries to see an example of LETO's functionality."
-            )
-            example = example_queries()
+        st.markdown("### ❓ Example queries")
+        st.info(
+            "If you have loaded the example data, you can try some of these queries to see an example of LETO's functionality."
+        )
+        example_queries()
 
     with main:
-        if example:
-            st.info(f"Using example query: `{example}`")
-            if st.button("↪️ Back"):
-                st.experimental_rerun()
-
-            query_text = example
-        else:
-            query_text = st.text_input("🔮 Enter a query for LETO")
+        query_text = st.text_input("🔮 Enter a query for LETO", key="query_input")
 
         if query_text:
             query = parser.parse(query_text)
+            response = resolver.resolve(query)
 
             st.write("#### 💡 Interpreting query as:")
             st.code(query)
-
-            response = resolver.resolve(query)
-
-            if not response:
-                st.error("😨 No data was found to answer that query!")
-                st.stop()
 
             if not response:
                 st.error("😨 No data was found to answer that query!")
@@ -87,7 +75,7 @@ def bootstrap():
 
 
 def load_data(storage):
-    loaders = {cls.__name__: cls for cls in get_loaders()}
+    loaders = {cls.title(): cls for cls in get_loaders()}
     loader_cls = loaders[st.selectbox("Loader", list(loaders))]
 
     docstring = dedent(loader_cls.__doc__)
@@ -97,10 +85,18 @@ def load_data(storage):
 
     loader = _build_cls(loader_cls)
 
+    metadata = st.text_area("🏷️ Metadata").split("\n")
+    meta = {}
+
+    for line in metadata:
+        if line:
+            k, v = line.split("=")
+            meta[k.strip()] = v.strip()
+
     if st.button("🚀 Run"):
         progress = st.empty()
 
-        for i, relation in enumerate(loader.load()):
+        for i, relation in enumerate(loader.load(**meta)):
             progress.warning(f"⚙️ Loading {i+1} tuples...")
             try:
                 storage.store(relation)
@@ -122,9 +118,7 @@ def example_queries():
         "which features predict salary in a DataScientist",
     ]:
         if st.button(f"❔ {q}"):
-            example_query = q
-
-    return example_query
+            st.session_state.query_input = q
 
 
 def _build_cls(cls):
@@ -145,10 +139,12 @@ def _build_cls(cls):
             init_values[k] = st.text_input(k, value="")
         elif v == Text:
             init_values[k] = st.text_area(k, value="")
+        elif v == io.BytesIO:
+            init_values[k] = st.file_uploader(k)
+        elif v == List[io.BytesIO]:
+            init_values[k] = st.file_uploader(k, accept_multiple_files=True)
         elif issubclass(v, enum.Enum):
             values = {e.name: e.value for e in v}
             init_values[k] = values[st.selectbox(k, list(values))]
-        elif v == io.BytesIO:
-            init_values[k] = st.file_uploader(k)
 
     return cls(**init_values)

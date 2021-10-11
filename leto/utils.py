@@ -77,6 +77,7 @@ def get_model(name: str = "en_core_web_sm") -> spacy.Language:
         raise e
 
 
+@st.experimental_singleton
 def get_local_model(name: str) -> spacy.Language:
     """Gets Language model and data from disk
 
