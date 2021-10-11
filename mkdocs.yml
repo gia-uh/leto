@@ -10,7 +10,7 @@ theme:
   # favicon: avatar.png
   # logo: avatar.png
   features:
-    - navigation.tabs
+    # - navigation.tabs
     - navigation.sections
     - navigation.instant
     - toc.integrate
@@ -60,7 +60,5 @@ markdown_extensions:
 
 nav:
   - 🏠 Home: index.md
-  - 📝 User Guide:
-    - Getting Started: guide/index.md
-  - 🛠️ Development Guide:
-    - Getting Started: guide/index.md
+  - 📝 User Guide: guide.md
+  - 🛠️ Development Guide: dev.md
