@@ -5,14 +5,7 @@ from textwrap import dedent
 from .loaders import get_loaders
 from .storage import Storage, get_storages
 from .query import QueryParser, QueryResolver, get_parsers
-from .visualization import (
-    DummyVisualizer,
-    Visualizer,
-    MapVisualizer,
-    GraphVisualizer,
-    CountVisualizer,
-    PredictVisualizer,
-)
+from .visualization import Visualizer, get_visualizers
 from io import StringIO
 
 
@@ -33,13 +26,7 @@ def bootstrap():
             load_data(storage)
 
     resolver: QueryResolver = storage.get_query_resolver()
-    visualizers: List[Visualizer] = [
-        DummyVisualizer(),
-        MapVisualizer(),
-        GraphVisualizer(),
-        CountVisualizer(),
-        PredictVisualizer(),
-    ]
+    visualizers: List[Visualizer] = get_visualizers()
 
     main, side = st.columns((2, 1))
 

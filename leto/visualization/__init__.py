@@ -273,3 +273,13 @@ class PredictVisualizer(Visualizer):
                 st.altair_chart(chart, use_container_width=True)
 
         return Visualization(title="🧠 Prediction", score=1, run=visualization)
+
+
+def get_visualizers():
+    return [
+        DummyVisualizer(),
+        GraphVisualizer(),
+        MapVisualizer(),
+        CountVisualizer(),
+        PredictVisualizer(),
+    ]

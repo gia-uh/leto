@@ -64,8 +64,26 @@ class ManualLoader(Loader):
             )
 ```
 
+Finally, on `leto/loaders/__init__.py`, method `get_loaders()`, add a line importing your loader and include it into the returned list.
+
 ## Adding new visualizations
 
+To add a new visualization, you need to provide a new implementation of `Visualizer`. This implementation must provide a method `visualize` which in turn returns a `Visualization` instance. A visualization instance basically has title, a score, and a callable method that is invoked when the visualization must be executed.
 
+This callable will be run in a `streamlit` container context, so you can directly use `st.*` methods to construct any visualization logic you desire.
+The recommended approach is to implement whatever preprocessing logic is necessary in the `visualize()` method, and just perform actual visualization logic inside the callback.
 
-## Adding a new backend driver
+In the `visualize()` method you'll have access to both the original query and the response. The `score` value is used to sort the visualizations, so you should set it to value that is roughly proportional to how informative the visualization is. This score is unbounded.
+
+Here's an example of a very simple visualizer:
+
+```python
+class DummyVisualizer(Visualizer):
+    def visualize(self, query: Query, response: List[Relation]) -> Visualization:
+        def visualization():
+            st.code("\n".join(str(r) for r in response))
+
+        return Visualization(title="📋 Returned tuples", score=0, run=visualization)
+```
+
+Finally, on `leto/visualization/__init__.py`, method `get_visualizers()` add your implementation to the returned list.
