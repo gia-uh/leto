@@ -163,34 +163,32 @@ class MultiCSVLoader(Loader):
             index, cand, properties = self.infer_index(df)
             for col in cand:
                 yield Relation(
-                    entity_from=Entity(".".join([df_name, str(index)]), type="THING"),
+                    entity_from=Entity("_".join([df_name, str(index)]), type="THING"),
                     label="same_as",
-                    entity_to=Entity(".".join([df_name, str(col)]), type="THING"),
+                    entity_to=Entity("_".join([df_name, str(col)]), type="THING"),
                 )
             for col in properties:
                 yield Relation(
-                    entity_from=Entity(".".join([df_name, str(index)]), type="THING"),
+                    entity_from=Entity("_".join([df_name, str(index)]), type="THING"),
                     label="has_property",
-                    entity_to=Entity(".".join([df_name, str(col)]), type="PROP"),
+                    entity_to=Entity("_".join([df_name, str(col)]), type="PROP"),
                 )
             for col in [index] + cand + properties:
                 yield Relation(
                     entity_from=Entity(
-                        ".".join([df_name, str(col)]),
+                        "_".join([df_name, str(col)]),
                         type="PROP" if col in properties else "THING",
                     ),
                     label="is_a",
-                    entity_to=Entity(
-                        ".".join([df_name, str(df[col].dtype)]), type="TYPE"
-                    ),
+                    entity_to=Entity(str(df[col].dtype), type="TYPE"),
                 )
 
         dataframes = {
-            df_name: df.rename(lambda x: ".".join([df_name, x]), axis="columns")
+            df_name: df.rename(lambda x: "_".join([df_name, x]), axis="columns")
             for df_name, df in dataframes.items()
         }
         columns = {
-            (df_name, ".".join([df_name, col])): prop
+            (df_name, "_".join([df_name, col])): prop
             for ((df_name, col), prop) in columns.items()
         }
 
@@ -217,11 +215,9 @@ class MultiCSVLoader(Loader):
                         )
                     )
                     yield Relation(
-                        entity_from=Entity(
-                            ".".join([df_name1, str(col1)]), type="THING"
-                        ),
+                        entity_from=Entity(str(col1), type="THING"),
                         label="same_as",
-                        entity_to=Entity(".".join([df_name2, str(col2)]), type="THING"),
+                        entity_to=Entity(str(col2), type="THING"),
                     )
 
                     _df = pd.merge(
@@ -263,8 +259,7 @@ class MultiCSVLoader(Loader):
                     entity_from=entity_from,
                     label="is_a",
                     entity_to=Entity(
-                        str(".".join([df_name, column_partition[df_name]["index"]])),
-                        type="THING",
+                        str(column_partition[df_name]["index"]), type="THING",
                     ),
                 )
         for k in foreign_keys:
