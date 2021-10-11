@@ -55,11 +55,10 @@ def bootstrap():
 
         if query_text:
             query = parser.parse(query_text)
+            response = resolver.resolve(query)
 
             st.write("#### 💡 Interpreting query as:")
             st.code(query)
-
-            response = resolver.resolve(query)
 
             if not response:
                 st.error("😨 No data was found to answer that query!")

@@ -24,4 +24,4 @@ jobs:
         run: black --check leto/
 
       - name: Run tests
-        run: make test
+        run: pytest leto tests --doctest-modules --cov leto
