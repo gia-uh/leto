@@ -156,9 +156,9 @@ class CountVisualizer(Visualizer):
         if not isinstance(query, HowManyQuery):
             return Visualization.Empty()
 
-        entities = set(query.entities)
-        field = query.attributes[0]
-        attributes = query.attributes[1:]
+        entities = set(str(e) for e in query.entities)
+        field = str(query.attributes[0])
+        attributes = [str(a) for a in query.attributes[1:]]
 
         data = []
 
@@ -205,7 +205,7 @@ class PredictVisualizer(Visualizer):
             return Visualization.Empty()
 
         entities = query.entities
-        terms = set(query.attributes)
+        terms = set(str(a) for a in query.attributes)
 
         target_attributes = set()
         features = set()
@@ -226,11 +226,13 @@ class PredictVisualizer(Visualizer):
         targets = []
 
         for relation in response:
-            datum = {k: relation.entity_from.get(k) or relation.get(k) for k in features}
+            datum = {
+                k: relation.entity_from.get(k) or relation.get(k) for k in features
+            }
             target = {
-                    k: relation.entity_from.get(k) or relation.get(k)
-                    for k in target_attributes
-                }
+                k: relation.entity_from.get(k) or relation.get(k)
+                for k in target_attributes
+            }
 
             if None in datum.values() or None in target.values():
                 continue

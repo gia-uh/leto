@@ -40,7 +40,14 @@ class WikipediaLoader(Loader):
         return "From Wikipedia page"
 
     def _get_source(self, name, **metadata) -> Source:
-        return Source(name, method="web", loader="WikipediaLoader", query=self.query, language=self.language, **metadata)
+        return Source(
+            name,
+            method="web",
+            loader="WikipediaLoader",
+            query=self.query,
+            language=self.language,
+            **metadata
+        )
 
     def _load(self):
         if self.language is Language.es:
