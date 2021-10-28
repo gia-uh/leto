@@ -29,6 +29,7 @@ class Loader(abc.ABC):
         metadata = self._get_source(
             str(uuid.uuid4()),
             created_on=datetime.datetime.now().astimezone(None).isoformat(),
+            # usuario, versión, idioma...
             **metadata,
         )
 
