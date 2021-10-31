@@ -7,7 +7,14 @@ def test_svo_from_text():
     loader = SVOFromText("Colombus discovered the American Continent", Language.en)
     tuples = list(loader.load())
 
-    assert Relation("discover", Entity("Colombus", "Thing"), Entity("American_Continent", "Thing")) in tuples
+    assert (
+        Relation(
+            "discover",
+            Entity("Colombus", "Thing"),
+            Entity("American_Continent", "Thing"),
+        )
+        in tuples
+    )
 
 
 def test_svo_from_file():
@@ -15,4 +22,11 @@ def test_svo_from_file():
     loader = SVOFromFile(text, Language.en)
     tuples = list(loader.load())
 
-    assert Relation("discover", Entity("Colombus", "Thing"), Entity("American_Continent", "Thing")) in tuples
+    assert (
+        Relation(
+            "discover",
+            Entity("Colombus", "Thing"),
+            Entity("American_Continent", "Thing"),
+        )
+        in tuples
+    )

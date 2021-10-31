@@ -3,7 +3,7 @@ from typing import Iterable
 import spacy
 import wikipedia
 from leto.model import Entity, Relation
-from leto.loaders.unstructured import get_svo_tripplets, get_model
+from leto.loaders.unstructured import get_model
 from leto.storage.neo4j_storage import GraphStorage
 from leto.loaders.unstructured import Language
 import subprocess
@@ -156,9 +156,16 @@ def _seed_content(content: str, language: Language):
     nlp = get_model(language)
 
     ready_content = content
-    if language is Language.en:  # download english model
-        nlp.add_pipe("coreferee")
-        ready_content = get_coreference_resolved_docs(nlp, [content])[0]
+    # if language is Language.en:  # download english model
+    #     try:
+    #         nlp.add_pipe("coreferee")
+    #     except:
+    #         (statusCode,_) = subprocess.getstatusoutput("python -m coreferee install en")
+    #         if (statusCode != 0):
+    #             raise Exception("Failed to install en model for Coreferee")
+    #         nlp.add_pipe("coreferee")
+
+    #     ready_content = get_coreference_resolved_docs(nlp, [content])[0]
 
     doc = nlp(ready_content)
     # First get all the entities in the sentence
@@ -167,6 +174,7 @@ def _seed_content(content: str, language: Language):
     relation_model = opennre.get_model("wiki80_bert_softmax")
     relations_list = []
     graph_db = GraphStorage()
+
     for sentence in doc.sents:
         try:
             sentence_entities = wikifier(sentence)
@@ -237,15 +245,24 @@ def _seed_content(content: str, language: Language):
                             wikiId=relation["target"]["wikiId"],
                         )
                         graph_relation = Relation(
-                            relation["type"], subject_entity, object_entity
+                            relation["type"].replace(" ", "_"),
+                            subject_entity,
+                            object_entity,
                         )
                         try:
                             graph_db.store(graph_relation)
                             print("Stored relation:", graph_relation, sep=" ")
-                        except:
+                        except Exception as e:
+                            print(
+                                "Error storing relation:",
+                                graph_relation,
+                                "\nerror:",
+                                e,
+                                sep=" ",
+                            )
                             pass
 
-    entities_set = set(entities)
+    entities_set = set([e["wikiId"] for e in entities])
     print(
         f"created {len(entities_set)} entities and {len(relations_list)} relationships"
     )
@@ -272,4 +289,4 @@ seed_from_wikipedia("Lenin")
 """
 
 if __name__ == "__main__":
-    seed_from_wikipedia("Lenin")
+    seed_from_wikipedia("World War II")
