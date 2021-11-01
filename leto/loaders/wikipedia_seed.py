@@ -3,7 +3,6 @@ from typing import Iterable
 import spacy
 import wikipedia
 from leto.model import Entity, Relation
-from leto.loaders.unstructured import get_svo_tripplets
 from leto.storage.neo4j_storage import GraphStorage
 from leto.loaders.unstructured import Language
 import subprocess
@@ -11,7 +10,6 @@ import urllib
 from string import punctuation
 from leto.loaders import Loader
 import itertools
-import coreferee
 
 try:
     import opennre
