@@ -128,6 +128,11 @@ pythonenv*
 # mkdocs documentation
 /site
 
+# data
+home/coder/leto/data/models/*
+leto/home/coder/leto/data/models/*
+
+
 # mypy
 .mypy_cache/
 .dmypy.json
