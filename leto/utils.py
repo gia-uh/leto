@@ -41,7 +41,16 @@ def visitor(arg: str):
     return wrap
 
 
-data_directory = str(Path(__file__).parent.parent / "data" / "models")
+data_directory = str(
+    "home/coder/leto/data/models/data/models"
+)  # "/home/coder/leto/data/models"  # str(Path(__file__).parent.parent / "data" / "models")
+
+
+def _ensure_data_directory():
+    try:
+        os.makedirs(data_directory)
+    except:
+        pass
 
 
 def get_model(name: str = "en_core_web_sm") -> spacy.Language:
@@ -60,9 +69,10 @@ def get_model(name: str = "en_core_web_sm") -> spacy.Language:
     try:
         print("model loading", end="", flush=True)
         model = get_local_model(name)
-        print(" done")
         if not model:
+            print("model not found locally at: ", data_directory)
             model = get_online_model(name)
+        print(" done")
         return model
     except Exception as e:
         raise e
@@ -91,7 +101,7 @@ def save_model(model: spacy.Language, name: str):
         model (spacy.Language): Language model to save
         name (str): Name, identification for the language. If name is already in use will override saved data.
     """
-    config = model.config
+    _ensure_data_directory()
     model.to_disk(os.path.join(data_directory, name))
 
 

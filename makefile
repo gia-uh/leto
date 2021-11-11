@@ -13,6 +13,8 @@ pull:
 pull-safe:
 	docker pull docker.uclv.cu/letoai/leto:latest
 	docker tag docker.uclv.cu/letoai/leto:latest letoai/leto:latest
+	docker pull docker.uclv.cu/neo4j:latest
+	docker tag docker.uclv.cu/neo4j:latest neo4j/neo4j:latest
 
 clean-neo4j:
 	sudo rm -rf data/neo4j
