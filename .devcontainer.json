@@ -1,6 +1,6 @@
 // If you want to run as a non-root user in the container, see .devcontainer/docker-compose.yml.
 {
-	"name": "Existing Docker Compose",
+	"name": "Develop",
 
 	// Update the 'dockerComposeFile' list if you have more compose files or use different names.
 	// The .devcontainer/docker-compose.yml file contains any overrides you need/want to make.
@@ -33,7 +33,7 @@
 	// "forwardPorts": [""],
 
 	// Uncomment the next line if you want start specific services in your Docker Compose config.
-	"runServices": ["neo4j"],
+	"runServices": ["neo4j", "docs"],
 
 	// Uncomment the next line if you want to keep your containers running after VS Code shuts down.
 	// "shutdownAction": "none",
