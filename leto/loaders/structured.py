@@ -114,9 +114,7 @@ class MultiCSVLoader(Loader):
 
     @staticmethod
     def infer_index(df):
-        """infer an index column using uniqueness and text simildef finite_cycle(iter: Iterable, t: int) -> Iterable:
-        for i in range(t):
-            yield from iterarity to 'ID' and 'name'"""
+        """infer an index column using uniqueness and text similarity to 'ID' and 'name'"""
         cand = [
             x for x in df.columns if df[x].is_unique and str(df[x].dtype) == "object"
         ]

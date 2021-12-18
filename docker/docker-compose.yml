@@ -11,6 +11,7 @@ services:
     volumes:
       - ../leto:/usr/local/lib/python3.8/site-packages/leto
       - ../:/home/coder/leto
+      - ../data/opennre/:/home/coder/.opennre
       - vscode-leto:/home/coder/.vscode-server
     working_dir: "/home/coder/leto"
     command: ["streamlit", "run", "leto.py"]

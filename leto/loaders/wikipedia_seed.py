@@ -2,22 +2,17 @@ import json
 from typing import Iterable
 import spacy
 import wikipedia
-from leto.model import Entity, Relation
+from leto.model import Entity, Relation, Source
 from leto.storage.neo4j_storage import GraphStorage
 from leto.loaders.unstructured import Language
+from leto.utils import get_model
 import subprocess
 import urllib
 from string import punctuation
 from leto.loaders import Loader
 import itertools
+import opennre
 
-try:
-    import opennre
-except:
-    subprocess.run(
-        ["pip", "install", "git+https://github.com/thunlp/OpenNRE.git#egg=OpenNRE"]
-    )
-    import opennre
 
 ENTITY_TYPES = [
     "human",
@@ -142,7 +137,10 @@ class WikipediaLoader(Loader):
         self.query = query
         self.language = language
 
-    def load(self):
+    def _get_source(self, name, **metadata) -> Source:
+        return Source(name, method="web", loader="WikipediaLoader", **metadata)
+
+    def _load(self):
         if self.language is Language.es:
             wikipedia.set_lang("es")
 
@@ -247,18 +245,8 @@ def _seed_content(content: str, language: Language):
                             subject_entity,
                             object_entity,
                         )
-                        try:
-                            graph_db.store(graph_relation)
-                            print("Stored relation:", graph_relation, sep=" ")
-                        except Exception as e:
-                            print(
-                                "Error storing relation:",
-                                graph_relation,
-                                "\nerror:",
-                                e,
-                                sep=" ",
-                            )
-                            pass
+
+                        yield graph_relation
 
     entities_set = set([e["wikiId"] for e in entities])
     print(

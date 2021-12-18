@@ -29,7 +29,7 @@ class RuleBasedQueryParser(QueryParser):
         nlp = self._get_model()
         doc = nlp(query)
 
-        entities = [f"{e}" for e in doc.ents] or [n for n in doc.noun_chunks]
+        entities = [e for e in doc.ents] or [n for n in doc.noun_chunks]
         relations = [token for token in doc if token.pos_ in ["VERB", "NOUN"]]
         attributes = [token for token in doc if token.pos_ in ["NOUN", "ADJ"] and token.text != "much"]
 
