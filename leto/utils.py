@@ -42,7 +42,7 @@ def visitor(arg: str):
 
 
 data_directory = str(
-    "home/coder/leto/data/models/data/models"
+    "/home/coder/leto/data/models"
 )  # "/home/coder/leto/data/models"  # str(Path(__file__).parent.parent / "data" / "models")
 
 

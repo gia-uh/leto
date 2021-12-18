@@ -4,7 +4,7 @@ This guide explains LETO's architecture and guidelines on how to extend and modi
 
 ## Overview of LETO's architecture
 
-At the highest level LETO is an application composed of two services: a frontend written in [streamlit](https://streamlit.io) and a backend stored in [neo4j](https://neo4j.com). All the data is LETO is stored in a single graph database in `neo4j`, using some conventions to determine how it is interpreted.
+At the highest level, LETO is an application composed of two services: a frontend written in [streamlit](https://streamlit.io) and a backend stored in [neo4j](https://neo4j.com). All the data is LETO is stored in a single graph database in `neo4j`, using some conventions to determine how it is interpreted.
 
 The frontend is a streamlit app which follows a very simple cycle:
 
@@ -13,18 +13,18 @@ The frontend is a streamlit app which follows a very simple cycle:
 3. Compute a response
 4. Visualize the response
 
-This cycle is implemented as a streamlined process in `leto/ui.py` which in turns uses several components to weave everything in. Let's look at each step in more detail.
+This cycle is implemented as a streamlined process in `leto/ui.py` which in turn uses several components to weave everything. Let's look at each step in more detail.
 
-Data enters LETO via a `Loader`, a class that implements a single `_load()` method that returns a iterable of `Entity` and `Relation` instances.
-An `Entity` is just name plus a type, and some opaque attributes. Likewise, a `Relation` has a label, and the two entities it connects. All relations in LETO are directed.
+Data enters LETO via a `Loader`, a class that implements a single `_load()` method that returns an iterable of `Entity` and `Relation` instances.
+An `Entity` is just a name plus a type, and some opaque attributes. Likewise, a `Relation` has a label, and the two entities it connects. All relations in LETO are directed.
 
-In the main application cycle, the currently selected loader is firss instantiated with the corresponding parameters, and then executed.
-The resulting iterable is given to a `Storage` instance, which can be either `GraphStorage` (the default) or a `DummyStorage` which is there just for testing purposes.
+In the main application cycle, the currently selected loader is first instantiated with the corresponding parameters and then executed.
+The resulting iterable is given to a `Storage` instance, which can be either `GraphStorage` (the default) or a `DummyStorage` (which is there just for testing purposes).
 
 An `Storage` inheritor needs to supply a `store` method with receives either an entity or a relation.
 They also provide a `size()` method for instrospection.
 
-Once stored any newly created data, the main application loop proceeds to parse the current query. A `QueryParser` implementation is used here, which receives a `string` as input and returns an instance of the `Query` class. Different sub-instances of `Query` exist, but they all share the same basic structure: a list of entities, and list of relations, and a list of attributes. Currently implemented query parsers are based on some hard-coded rules on top of a `spacy` tokenization of the query, hence they perform basic entity detection and the rules are based on POS-tags and other syntactic cues.
+Once stored any newly created data, the main application loop proceeds to parse the current query. A `QueryParser` implementation is used here, which receives a `string` as input and returns an instance of the `Query` class. Different sub-instances of `Query` exist, but they all share the same basic structure: a list of entities, a list of relations, and a list of attributes. Currently implemented query parsers are based on some hard-coded rules on top of a `spacy` tokenization of the query, hence they perform basic entity detection and the rules are based on POS-tags and other syntactic cues.
 
 Once parsed, the query is fed to a `QueryResolver` instance, which is provided by the `Storage` implementation. This will return a sub-graph in the form of a list of tuples, i.e., `Relation` instances. How smart can this resolution be is left to the implementation of the query resolver. In `GraphStorage` the query resolver generates a set of neo4j queries based on some rules that try to find the most similar entities and relations in the graph. There's also currently a simplistic implementation of a similarity engine using `spacy` word embeddings, but this is still in a very crude state.
 
@@ -59,7 +59,7 @@ class ManualLoader(Loader):
 
             yield Relation(
                 label=r,
-                entity_from=Entity(name=e1, type="Thing),
+                entity_from=Entity(name=e1, type="Thing"),
                 entity_to=Entity(name=e2, type="Thing"),
             )
 ```
@@ -73,7 +73,7 @@ To add a new visualization, you need to provide a new implementation of `Visuali
 This callable will be run in a `streamlit` container context, so you can directly use `st.*` methods to construct any visualization logic you desire.
 The recommended approach is to implement whatever preprocessing logic is necessary in the `visualize()` method, and just perform actual visualization logic inside the callback.
 
-In the `visualize()` method you'll have access to both the original query and the response. The `score` value is used to sort the visualizations, so you should set it to value that is roughly proportional to how informative the visualization is. This score is unbounded.
+In the `visualize()` method, you'll have access to both the original query and the response. The `score` value is used to sort the visualizations, so you should set it to value that is roughly proportional to how informative the visualization is. This score is unbounded.
 
 Here's an example of a very simple visualizer:
 
