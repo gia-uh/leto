@@ -14,20 +14,6 @@ import itertools
 import opennre
 
 
-ENTITY_TYPES = [
-    "human",
-    "person",
-    "company",
-    "enterprise",
-    "business",
-    "geographic region",
-    "human settlement",
-    "geographic entity",
-    "territorial entity type",
-    "organization",
-]
-
-
 def wikifier(text, lang="en", threshold=0.7):
     """Function that fetches entity linking results from wikifier.com API"""
     # Prepare the URL.
@@ -58,55 +44,17 @@ def wikifier(text, lang="en", threshold=0.7):
     # Output the annotations.
     results = list()
     for annotation in response["annotations"]:
-        # Filter out desired entity classes
-        if ("wikiDataClasses" in annotation) and (
-            any([el["enLabel"] in ENTITY_TYPES for el in annotation["wikiDataClasses"]])
-        ):
-
-            # Specify entity label
-            if any(
-                [
-                    el["enLabel"] in ["human", "person"]
-                    for el in annotation["wikiDataClasses"]
-                ]
-            ):
-                label = "Person"
-            elif any(
-                [
-                    el["enLabel"]
-                    in ["company", "enterprise", "business", "organization"]
-                    for el in annotation["wikiDataClasses"]
-                ]
-            ):
-                label = "Organization"
-            elif any(
-                [
-                    el["enLabel"]
-                    in [
-                        "geographic region",
-                        "human settlement",
-                        "geographic entity",
-                        "territorial entity type",
-                    ]
-                    for el in annotation["wikiDataClasses"]
-                ]
-            ):
-                label = "Location"
-            else:
-                label = "Thing"
-
+        if "wikiDataClasses" in annotation:
             results.append(
                 {
                     "title": annotation["title"],
                     "wikiId": annotation["wikiDataItemId"],
-                    "label": label,
+                    "label": annotation["wikiDataClasses"],
                     "characters": [
                         (el["chFrom"], el["chTo"]) for el in annotation["support"]
                     ],
                 }
             )
-        else:
-            pass
     return results
 
 
@@ -133,9 +81,12 @@ class WikipediaLoader(Loader):
     Load all the content from a specific Wikipedia page.
     """
 
-    def __init__(self, query: str, language: Language) -> None:
+    def __init__(
+        self, query: str, language: Language, relationship_min_score=0.7
+    ) -> None:
         self.query = query
         self.language = language
+        self.relationship_min_score = relationship_min_score
 
     def _get_source(self, name, **metadata) -> Source:
         return Source(name, method="web", loader="WikipediaLoader", **metadata)
@@ -145,10 +96,10 @@ class WikipediaLoader(Loader):
             wikipedia.set_lang("es")
 
         page = wikipedia.page(self.query)
-        return _seed_content(page.content, self.language)
+        return _seed_content(page.content, self.language, self.relationship_min_score)
 
 
-def _seed_content(content: str, language: Language):
+def _seed_content(content: str, language: Language, relationship_min_score=0.7):
     nlp = get_model(language)
 
     ready_content = content
@@ -169,7 +120,6 @@ def _seed_content(content: str, language: Language):
 
     relation_model = opennre.get_model("wiki80_bert_softmax")
     relations_list = []
-    graph_db = GraphStorage()
 
     for sentence in doc.sents:
         try:
@@ -200,14 +150,20 @@ def _seed_content(content: str, language: Language):
 
                     relation = None
                     if data[0] == reverseData[0]:
-                        if data[1] > reverseData[1] and data[1] > 0.7:
+                        if (
+                            data[1] > reverseData[1]
+                            and data[1] > relationship_min_score
+                        ):
                             relation = {
                                 "source": s_entities[combination[0]],
                                 "target": s_entities[combination[1]],
                                 "type": data[0],
                             }
 
-                        if reverseData[1] > data[1] and reverseData[1] > 0.7:
+                        if (
+                            reverseData[1] > data[1]
+                            and reverseData[1] > relationship_min_score
+                        ):
                             relation = {
                                 "source": s_entities[combination[1]],
                                 "target": s_entities[combination[0]],
@@ -230,22 +186,42 @@ def _seed_content(content: str, language: Language):
 
                     if not relation is None:
                         relations_list.append(relation)
+
                         subject_entity = Entity(
                             relation["source"]["title"],
-                            relation["source"]["label"],
+                            "thing",
                             wikiId=relation["source"]["wikiId"],
                         )
+
                         object_entity = Entity(
                             relation["target"]["title"],
-                            relation["target"]["label"],
+                            "thing",
                             wikiId=relation["target"]["wikiId"],
                         )
+
                         graph_relation = Relation(
                             relation["type"].replace(" ", "_"),
                             subject_entity,
                             object_entity,
                         )
 
+                        # Generate every "is_a" relations for the subject entity
+                        for slabel in relation["source"]["label"]:
+                            label_entity = Entity(slabel["enLabel"], "thing")
+                            label_relation = Relation(
+                                "is_a", subject_entity, label_entity
+                            )
+                            yield label_relation
+
+                        # Generate every "is_a" relations for the object entity
+                        for slabel in relation["target"]["label"]:
+                            label_entity = Entity(slabel["enLabel"], "thing")
+                            label_relation = Relation(
+                                "is_a", object_entity, label_entity
+                            )
+                            yield label_relation
+
+                        # Generate relation between subject and object entities
                         yield graph_relation
 
     entities_set = set([e["wikiId"] for e in entities])
@@ -259,7 +235,14 @@ def seed_from_wikipedia(wikipedia_page_title: str, language: Language = Language
         wikipedia.set_lang("es")
 
     page = wikipedia.page(wikipedia_page_title)
-    _seed_content(page.content, language)
+    for tup in _seed_content(page.content, language):
+        graph_db = GraphStorage()
+        try:
+            graph_db.store(tup)
+            print("stored ", tup)
+        except:
+            continue
+        continue
 
 
 def query_wikipedia(query: str):
@@ -275,4 +258,4 @@ seed_from_wikipedia("Lenin")
 """
 
 if __name__ == "__main__":
-    seed_from_wikipedia("World War II")
+    seed_from_wikipedia("COVID-19")
