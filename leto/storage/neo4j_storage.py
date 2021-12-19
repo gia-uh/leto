@@ -80,6 +80,12 @@ def embedding_map(_storage=None):
     return EmbeddingMap(_storage)
 
 
+@st.experimental_singleton
+def Neo4jStorage():
+    print("Creating new instance of Neo4j GraphStorage")
+    return GraphStorage()
+
+
 class GraphStorage(Storage):
     """
     Class for handling operations concerning neo4j database. It wraps main functions as
@@ -93,6 +99,10 @@ class GraphStorage(Storage):
         self.driver = get_neo4j_driver()
         # self.embedding_map = embedding_map(self)
 
+        self.entities = set(self.get_entity_names())
+        self.relationships = set(self.get_relationship_types())
+        self.attributes = set(self.get_attribute_types())
+
     def close(self):
         self.driver.close()
 
@@ -103,6 +113,10 @@ class GraphStorage(Storage):
     def get_relationship_types(self):
         with self.driver.session() as session:
             return session.read_transaction(self._get_relationship_types)
+
+    def get_attribute_types(self):
+        with self.driver.session() as session:
+            return session.read_transaction(self._get_attribute_types)
 
     def get_entity_names(self):
         with self.driver.session() as session:
@@ -124,6 +138,14 @@ class GraphStorage(Storage):
 
         return results
 
+    def _get_attribute_types(self, tx):
+        results = []
+
+        for record in tx.run("CALL db.schema.nodeTypeProperties()"):
+            results.append(record["propertyName"])
+
+        return results
+
     @property
     def size(self):
         with self.driver.session() as session:
@@ -139,7 +161,10 @@ class GraphStorage(Storage):
             self.create_relationship(entity_or_relation)
 
     def create_entity(self, entity: Entity):
-        # self.embedding_map.register_entity(entity.name)
+        self.entities.add(entity.name)
+
+        for attr in entity.attrs:
+            self.attributes.add(attr)
 
         with self.driver.session() as session:
             attrs = entity.attrs.copy()
@@ -156,7 +181,7 @@ class GraphStorage(Storage):
             return result[0]
 
     def create_relationship(self, relation: Relation):
-        # self.embedding_map.register_relation(relation.label)
+        self.relationships.add(relation.label)
 
         with self.driver.session() as session:
             # Write transactions allow the driver to handle retries and transient errors

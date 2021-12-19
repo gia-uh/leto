@@ -114,25 +114,20 @@ class MapVisualizer(Visualizer):
     def __init__(self) -> None:
         with open("/home/coder/leto/data/countries.geo.json") as fp:
             self.data = json.load(fp)["features"]
+            self.visualizables = set(feature['properties']['name'] for feature in self.data)
 
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
-        if not isinstance(query, (WhereQuery, WhatQuery)):
-            return Visualization.Empty()
-
         mapeable = []
 
         for tuple in response:
             for e in [tuple.entity_from, tuple.entity_to]:
-                if "lon" in e.attrs:
-                    mapeable.append(
-                        dict(name=e.name, lat=float(e.lat), lon=float(e.lon))
-                    )
+                if e.name in self.visualizables:
+                    mapeable.append(e)
 
         if not mapeable:
             return Visualization.Empty()
 
-        regions = set(d["name"] for d in mapeable)
-        df = pd.DataFrame(mapeable).set_index("name")
+        regions = set(d.name for d in mapeable)
 
         def visualization():
             data = [
@@ -158,7 +153,7 @@ class MapVisualizer(Visualizer):
             st.pydeck_chart(map)
 
         return Visualization(
-            title="🗺️ Map", score=len(df) / len(response), run=visualization
+            title="🗺️ Map", score=len(mapeable) / len(response), run=visualization
         )
 
 
