@@ -25,17 +25,25 @@ class RuleBasedQueryParser(QueryParser):
 
         return e[: -len(words)]
 
-    def parse(self, query: str) -> Query:
-        nlp = self._get_model()
+    def parse(self, query: str, storage) -> Query:
+        nlp = get_model()
         doc = nlp(query)
 
-        entities = [e for e in doc.ents] or [n for n in doc.noun_chunks]
-        relations = [token for token in doc if token.pos_ in ["VERB", "NOUN"]]
-        attributes = [
-            token
-            for token in doc
-            if token.pos_ in ["NOUN", "ADJ"] and token.text != "much"
-        ]
+        entities = [] #[e for e in doc.ents] or [n for n in doc.noun_chunks]
+        relations = [] #[token for token in doc if token.pos_ in ["VERB", "NOUN"]]
+        attributes = [] #[token for token in doc if token.pos_ in ["NOUN", "ADJ"] and token.text != "much"]
+
+        for entity in storage.entities:
+            if entity in query:
+                entities.append(entity)
+
+        for attr in storage.relationships:
+            if attr.replace("_", " ") in query:
+                relations.append(attr)
+
+        for attr in storage.attributes:
+            if attr.replace("_", " ") in query:
+                attributes.append(attr)
 
         query_hints = self._get_query_hints()
 

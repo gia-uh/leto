@@ -57,7 +57,7 @@ class QueryResolver(abc.ABC):
 
 class QueryParser(abc.ABC):
     @abc.abstractmethod
-    def parse(self, query: str) -> Query:
+    def parse(self, query: str, storage: "Storage") -> Query:
         pass
 
 

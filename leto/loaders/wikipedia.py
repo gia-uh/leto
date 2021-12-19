@@ -235,14 +235,7 @@ def seed_from_wikipedia(wikipedia_page_title: str, language: Language = Language
         wikipedia.set_lang("es")
 
     page = wikipedia.page(wikipedia_page_title)
-    for tup in _seed_content(page.content, language):
-        graph_db = GraphStorage()
-        try:
-            graph_db.store(tup)
-            print("stored ", tup)
-        except:
-            continue
-        continue
+    yield from _seed_content(page.content, language)
 
 
 def query_wikipedia(query: str):

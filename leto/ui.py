@@ -41,7 +41,7 @@ def bootstrap():
         query_text = st.text_input("🔮 Enter a query for LETO", key="query_input")
 
         if query_text:
-            query = parser.parse(query_text)
+            query = parser.parse(query_text, storage)
             response = resolver.resolve(query)
 
             st.write("#### 💡 Interpreting query as:")
