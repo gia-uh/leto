@@ -72,12 +72,11 @@ class CSVLoader(Loader):
                 attributes = { name: getattr(row, name) for name in column_types if column_types[name] == "attribute" }
                 attributes = { k:v for k,v in attributes.items() if pd.notna(v) }
 
-                for attr, value in attributes.items():
-                    e = Entity(str(uuid.uuid4()), type="TimeseriesEntry", label=attr, value=value, date=getattr(row, date_column))
-                    yield e
+                e = Entity(str(uuid.uuid4()), type="TimeseriesEntry", date=getattr(row, date_column), **attributes)
+                yield e
 
-                    for name, entity in entities.items():
-                        yield Relation(name, e, entity)
+                for name, entity in entities.items():
+                    yield Relation(name, e, entity)
 
 
     def _infer_type(self, name:str, df: pd.Series):
