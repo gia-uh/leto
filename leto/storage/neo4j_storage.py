@@ -91,7 +91,7 @@ class GraphStorage(Storage):
 
     def __init__(self):
         self.driver = get_neo4j_driver()
-        self.embedding_map = embedding_map(self)
+        # self.embedding_map = embedding_map(self)
 
     def close(self):
         self.driver.close()
@@ -139,7 +139,7 @@ class GraphStorage(Storage):
             self.create_relationship(entity_or_relation)
 
     def create_entity(self, entity: Entity):
-        self.embedding_map.register_entity(entity.name)
+        # self.embedding_map.register_entity(entity.name)
 
         with self.driver.session() as session:
             attrs = entity.attrs.copy()
@@ -156,7 +156,7 @@ class GraphStorage(Storage):
             return result[0]
 
     def create_relationship(self, relation: Relation):
-        self.embedding_map.register_relation(relation.label)
+        # self.embedding_map.register_relation(relation.label)
 
         with self.driver.session() as session:
             # Write transactions allow the driver to handle retries and transient errors
@@ -259,7 +259,7 @@ class GraphQueryResolver(QueryResolver):
 
     def __init__(self, storage: GraphStorage) -> None:
         self.storage = storage
-        self.embedding_map = embedding_map()
+        # self.embedding_map = embedding_map()
 
     def _make_triplet_reader(
         self, entity_from_tag: str, relation_tag: str, entity_to_tag: str
@@ -323,6 +323,8 @@ class GraphQueryResolver(QueryResolver):
         return results
 
     def _preprocess_query(self, query: Query):
+        return
+
         relations = set()
 
         for relation in query.relations:

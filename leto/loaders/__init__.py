@@ -44,14 +44,14 @@ class Loader(abc.ABC):
 def get_loaders() -> List[Loader]:
     from .unstructured import SVOFromFile, SVOFromText
     from .dummy import ManualLoader, ExampleLoader
-    from .structured import MultiCSVLoader
-    from .wikipedia_seed import WikipediaLoader
+    from .structured import MultiCSVLoader, CSVLoader
+    from .wikipedia import WikipediaLoader
 
     return [
         ExampleLoader,
         ManualLoader,
-        MultiCSVLoader,
-        # CSVLoader,
+        # MultiCSVLoader,
+        CSVLoader,
         SVOFromFile,
         SVOFromText,
         WikipediaLoader,

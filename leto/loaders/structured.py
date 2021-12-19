@@ -1,6 +1,8 @@
-from typing import Iterable, List
+from typing import List
 
-from pandas.core.frame import DataFrame
+from leto.loaders.wikipedia import ENTITY_TYPES
+
+import uuid
 from ..loaders import Loader
 import pandas as pd
 import numpy as np
@@ -33,72 +35,64 @@ class CSVLoader(Loader):
     Load structured data in table format from a CSV file.
     """
 
+    DATE_NAMES = [
+        "date",
+        "timestamp",
+    ]
+
     def __init__(self, path: BytesIO) -> None:
         self.path = path
 
     @classmethod
     def title(cls):
-        return "From CSV Files"
+        return "From CSV file"
 
-    def infer_index(self):
-        """infer an index column using uniqueness and text similarity to 'ID' and 'name'"""
-        cand = [
-            x
-            for x in self.col
-            if self.df[x].is_unique and str(self.df[x].dtype) == "object"
-        ]
-        similarity_name = process.extractOne("name", cand)
-        similarity_id = process.extractOne("id", cand)
-        self.index = max([similarity_name, similarity_id], key=lambda x: x[1])[0]
-        cand.remove(self.index)
-        self.cand = cand
+    def _get_source(self, name, **metadata) -> Source:
+        return Source(name, method="csv", loader="CSVLoader", **metadata)
 
     def _load(self):
-        """
-        yields index column,'same_as',all unique columns
-        yields index column,'has_property',all non unique columns
-        yields all columns,'is_a',column type
-        yields entity with properties,'is_a', index column
-        """
+        df = pd.read_csv(self.path)
 
-        self.df = pd.read_csv(self.path)
-        self.col = self.df.columns
-        self.index = None
-        self.infer_index()
-        # self.corr=self.df.select_dtypes(include=np.number).corr()
+        column_types = { column: self._infer_type(column, df[column]) for column in df.columns }
 
-        for col in self.cand:
-            yield Relation(
-                entity_from=Entity(str(self.index), type="THING"),
-                label="same_as",
-                entity_to=Entity(str(col), type="THING"),
-            )
+        names_to_entities = {}
 
-        properties = [x for x in self.col if (x not in self.cand + [self.index])]
-        for col in properties:
-            yield Relation(
-                entity_from=Entity(str(self.index), type="THING"),
-                label="has_property",
-                entity_to=Entity(str(col), type="PROP"),
-            )
+        for column, type in column_types.items():
+            if type == "entity":
+                for row in df[column].unique():
+                    e = Entity(row, column.title())
+                    names_to_entities[row] = e
+                    yield e
 
-        for col in self.col:
-            yield Relation(
-                entity_from=Entity(
-                    str(col), type="PROP" if col in properties else "THING"
-                ),
-                label="is_a",
-                entity_to=Entity(str(self.df[col].dtype), type="TYPE"),
-            )
+        if "date" in column_types.values():
+            date_column = [c for c,t in column_types.items() if t == 'date'][0]
 
-        for i, row in self.df.iterrows():
-            prop = row[properties].to_dict()
-            prop["alt_id"] = row[self.cand].to_dict()
-            yield Relation(
-                entity_from=Entity(name=str(row.at[self.index]), type="THING", **prop),
-                label="is_a",
-                entity_to=Entity(str(self.index), type="THING"),
-            )
+            for row in df.itertuples():
+                entities = { name: names_to_entities[getattr(row, name)] for name in column_types if column_types[name] == "entity" }
+                attributes = { name: getattr(row, name) for name in column_types if column_types[name] == "attribute" }
+                attributes = { k:v for k,v in attributes.items() if pd.notna(v) }
+
+                for attr, value in attributes.items():
+                    e = Entity(str(uuid.uuid4()), type="TimeseriesEntry", label=attr, value=value, date=getattr(row, date_column))
+                    yield e
+
+                    for name, entity in entities.items():
+                        yield Relation(name, e, entity)
+
+
+    def _infer_type(self, name:str, df: pd.Series):
+        # Try a bunch of heuristics
+
+        if df.dtype in ["float64", "float32", "int"]:
+            return "attribute"
+
+        if name in self.DATE_NAMES:
+            return "date"
+
+        if "code" in name.split("_"):
+            return None
+
+        return "entity"
 
 
 class MultiCSVLoader(Loader):

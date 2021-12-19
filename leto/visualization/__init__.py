@@ -66,8 +66,13 @@ class GraphVisualizer(Visualizer):
             entities = set(query.entities)
             main_entities = set()
 
+            skip_types = frozenset(['Source', 'TimeseriesEntry'])
+
             for tuple in response:
                 for e in [tuple.entity_from, tuple.entity_to]:
+                    if e.type in skip_types:
+                        continue
+
                     color = "white"
 
                     if e.name in entities:
@@ -75,6 +80,12 @@ class GraphVisualizer(Visualizer):
                         main_entities.add(e)
 
                     graph.node(e.name, fillcolor=color, style="filled")
+
+                if tuple.label == "has_source":
+                    continue
+
+                if tuple.entity_from.type in skip_types or tuple.entity_to.type in skip_types:
+                    continue
 
                 graph.edge(
                     tuple.entity_from.name, tuple.entity_to.name, label=tuple.label
