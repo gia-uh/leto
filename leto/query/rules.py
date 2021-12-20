@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from typing import Dict
+
 from leto.query import *
 from leto.utils import get_model
 from spacy import Language
@@ -7,6 +8,9 @@ from fuzzywuzzy import fuzz
 
 
 class RuleBasedQueryParser(QueryParser):
+    AGG_KEYWORDS = ['mean', 'sum']
+    GROUP_KEYWORDS = ['yearly', 'monthly']
+
     def __init__(self, *args) -> None:
         pass
 
@@ -30,6 +34,9 @@ class RuleBasedQueryParser(QueryParser):
         # nlp = get_model()
         # doc = nlp(query)
 
+        aggregate = None
+        groupby = None
+
         entities = [] #[e for e in doc.ents] or [n for n in doc.noun_chunks]
         relations = [] #[token for token in doc if token.pos_ in ["VERB", "NOUN"]]
         attributes = [] #[token for token in doc if token.pos_ in ["NOUN", "ADJ"] and token.text != "much"]
@@ -45,6 +52,14 @@ class RuleBasedQueryParser(QueryParser):
         for attr in storage.attributes:
             if attr.replace("_", " ").lower() in query.lower():
                 attributes.append(attr)
+
+        for keyword in self.AGG_KEYWORDS:
+            if keyword in query:
+                aggregate = keyword
+
+        for keyword in self.GROUP_KEYWORDS:
+            if keyword in query:
+                groupby = keyword
 
         # query_hints = self._get_query_hints()
 
@@ -62,7 +77,7 @@ class RuleBasedQueryParser(QueryParser):
         # if best_query is not None:
         #     return best_query
 
-        return Query(entities=entities, relations=relations, attributes=attributes)
+        return Query(entities=entities, relations=relations, attributes=attributes, aggregate=aggregate, groupby=groupby)
 
 
 class SpanishRuleParser(RuleBasedQueryParser):

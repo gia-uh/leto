@@ -53,7 +53,7 @@ class Visualizer(abc.ABC):
 class DummyVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
         def visualization():
-            st.code("\n".join(str(r) for r in response))
+            st.code("\n".join(str(r) for r in response if r.entity_from.type != "TimeseriesEntry"))
 
         return Visualization(title="📋 Returned tuples", score=0, run=visualization)
 
@@ -284,6 +284,8 @@ class PredictVisualizer(Visualizer):
 class TimeseriesVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
         data = []
+        entity_field = None
+        attribute_field = None
 
         for r in response:
             e = r.entity_from
@@ -291,23 +293,44 @@ class TimeseriesVisualizer(Visualizer):
             if e.type != 'TimeseriesEntry':
                 continue
 
+            if r.entity_to.type == "Source":
+                continue
+
             if not "date" in e.attrs:
                 continue
 
             for attr in query.attributes:
                 value = e.attrs.get(attr)
+
+                if not value:
+                    continue
+
+                entity_field = r.label
+                attribute_field = attr
                 data.append({r.label: r.entity_to.name, "date": e.attrs['date'], attr: value})
 
         if not data:
             return Visualization.Empty()
 
         df = pd.DataFrame(data)
+        df['date'] = pd.to_datetime(df['date'])
+
+        if query.groupby:
+            df = df.groupby([entity_field, pd.Grouper(key='date', freq=query.groupby[0].upper())])
+            df = getattr(df, query.aggregate)().reset_index()
 
         def visualization():
-            chart = alt.Chart(df).mark_line().encode(
+            chart = alt.Chart(df)
+
+            if query.groupby:
+                chart = chart.mark_bar()
+            else:
+                chart = chart.mark_line()
+
+            chart = chart.encode(
                 x="date:T",
-                y=f"{attr}:Q",
-                color=f"{r.label}",
+                y=f"{attribute_field}:Q",
+                color=f"{entity_field}",
             )
 
             st.altair_chart(chart, use_container_width=True)

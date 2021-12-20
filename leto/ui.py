@@ -38,7 +38,7 @@ def bootstrap():
         example_queries()
 
     with main:
-        query_text = st.text_input("🔮 Enter a query for LETO", value=st.session_state.query_input)
+        query_text = st.text_input("🔮 Enter a query for LETO", value=st.session_state.get('query_input', ""))
 
         if query_text:
             query = parser.parse(query_text, storage)
@@ -103,7 +103,11 @@ def example_queries():
     for q in [
         "What is a symptom of coronavirus",
         "total covid cases in Spain",
-        "Spain and Cuba, total covid cases",
+        "Spain and Cuba, cumulative covid cases",
+        "Spain and Cuba, daily covid cases, monthly mean",
+        "tourists in Spain",
+        "tourists in Spain monthly sum",
+        "tourists in Spain yearly sum",
     ]:
         st.button(f"❔ {q}", on_click=set_example_query, args=(q,))
 

@@ -1,6 +1,6 @@
 import abc
 from dataclasses import dataclass
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 from leto.model import Entity, Relation
 
 
@@ -9,6 +9,8 @@ class Query(abc.ABC):
     entities: List[str]
     relations: List[str]
     attributes: List[str]
+    aggregate: Optional[str]
+    groupby: Optional[str]
 
 
 @dataclass
