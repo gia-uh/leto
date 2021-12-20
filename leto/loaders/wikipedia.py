@@ -82,11 +82,11 @@ class WikipediaLoader(Loader):
     """
 
     def __init__(
-        self, query: str, language: Language, relationship_min_score=0.7
+        self, query: str, language: Language, sensitivity: float=0.7
     ) -> None:
         self.query = query
         self.language = language
-        self.relationship_min_score = relationship_min_score
+        self.relationship_min_score = sensitivity
 
     def _get_source(self, name, **metadata) -> Source:
         return Source(name, method="web", loader="WikipediaLoader", **metadata)
@@ -170,14 +170,14 @@ def _seed_content(content: str, language: Language, relationship_min_score=0.7):
                                 "type": reverseData[0],
                             }
                     else:
-                        if data[1] > 0.7:
+                        if data[1] > relationship_min_score:
                             relation = {
                                 "source": s_entities[combination[0]],
                                 "target": s_entities[combination[1]],
                                 "type": data[0],
                             }
 
-                        if reverseData[1] > 0.7:
+                        if reverseData[1] > relationship_min_score:
                             relation = {
                                 "source": s_entities[combination[1]],
                                 "target": s_entities[combination[0]],
@@ -212,6 +212,7 @@ def _seed_content(content: str, language: Language, relationship_min_score=0.7):
                                 "is_a", subject_entity, label_entity
                             )
                             yield label_relation
+                            break
 
                         # Generate every "is_a" relations for the object entity
                         for slabel in relation["target"]["label"]:
@@ -220,6 +221,7 @@ def _seed_content(content: str, language: Language, relationship_min_score=0.7):
                                 "is_a", object_entity, label_entity
                             )
                             yield label_relation
+                            break
 
                         # Generate relation between subject and object entities
                         yield graph_relation

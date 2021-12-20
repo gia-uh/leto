@@ -1,11 +1,8 @@
 from typing import List
 
-from leto.loaders.wikipedia import ENTITY_TYPES
-
 import uuid
 from ..loaders import Loader
 import pandas as pd
-import numpy as np
 from fuzzywuzzy import process
 from itertools import permutations, product
 from io import BytesIO

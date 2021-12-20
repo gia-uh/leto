@@ -371,8 +371,9 @@ class GraphQueryResolver(QueryResolver):
         query.entities = list(entities)
 
     def _resolve(self, query: Query) -> Iterable[Relation]:
-        self._preprocess_query(query)
-        entities = list(query.entities)
+        # self._preprocess_query(query)
+        entities = query.entities
+        relations = query.relations
 
         # Expand entities to contain instances of is_a
         for entity in query.entities:
@@ -400,6 +401,10 @@ class GraphQueryResolver(QueryResolver):
                 .get(e1, r, e2)
             ):
                 relation = self._build_relation_from_triplet(t)
+
+                if relations and relation.label not in relations:
+                    continue
+
                 yield relation
 
         for entity in entities:
@@ -412,6 +417,10 @@ class GraphQueryResolver(QueryResolver):
                 .get(e1, r, e2)
             ):
                 relation = self._build_relation_from_triplet(t)
+
+                if relations and relation.label not in relations:
+                    continue
+
                 yield relation
 
 

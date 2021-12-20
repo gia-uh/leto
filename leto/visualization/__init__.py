@@ -281,6 +281,40 @@ class PredictVisualizer(Visualizer):
         return Visualization(title="🧠 Prediction", score=1, run=visualization)
 
 
+class TimeseriesVisualizer(Visualizer):
+    def visualize(self, query: Query, response: List[Relation]) -> Visualization:
+        data = []
+
+        for r in response:
+            e = r.entity_from
+
+            if e.type != 'TimeseriesEntry':
+                continue
+
+            if not "date" in e.attrs:
+                continue
+
+            for attr in query.attributes:
+                value = e.attrs.get(attr)
+                data.append({r.label: r.entity_to.name, "date": e.attrs['date'], attr: value})
+
+        if not data:
+            return Visualization.Empty()
+
+        df = pd.DataFrame(data)
+
+        def visualization():
+            chart = alt.Chart(df).mark_line().encode(
+                x="date:T",
+                y=f"{attr}:Q",
+                color=f"{r.label}",
+            )
+
+            st.altair_chart(chart, use_container_width=True)
+
+        return Visualization(title="📈 Timeseries", score=2, run=visualization)
+
+
 def get_visualizers():
     return [
         DummyVisualizer(),
@@ -288,4 +322,5 @@ def get_visualizers():
         MapVisualizer(),
         CountVisualizer(),
         PredictVisualizer(),
+        TimeseriesVisualizer(),
     ]

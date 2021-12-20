@@ -38,14 +38,15 @@ def bootstrap():
         example_queries()
 
     with main:
-        query_text = st.text_input("🔮 Enter a query for LETO", key="query_input")
+        query_text = st.text_input("🔮 Enter a query for LETO", value=st.session_state.query_input)
 
         if query_text:
             query = parser.parse(query_text, storage)
-            response = resolver.resolve(query)
 
             st.write("#### 💡 Interpreting query as:")
             st.code(query)
+
+            response = resolver.resolve(query)
 
             if not response:
                 st.error("😨 No data was found to answer that query!")
@@ -96,16 +97,15 @@ def load_data(storage):
 def example_queries():
     example_query = ""
 
+    def set_example_query(q):
+        st.session_state.query_input=q
+
     for q in [
-        "show me info about Cuba",
-        "who has led a Revolution",
-        "where has there been a Revolution",
-        "Cuban Revolution and Vladimir Illich Lenin",
-        "how much is the salary of a DataScientist by gender",
-        "which features predict salary in a DataScientist",
+        "What is a symptom of coronavirus",
+        "total covid cases in Spain",
+        "Spain and Cuba, total covid cases",
     ]:
-        if st.button(f"❔ {q}"):
-            st.session_state.query_input = q
+        st.button(f"❔ {q}", on_click=set_example_query, args=(q,))
 
 
 def _build_cls(cls):
@@ -120,6 +120,8 @@ def _build_cls(cls):
     for k, v in init_args.items():
         if v == int:
             init_values[k] = st.number_input(k, value=0)
+        if v == float:
+            init_values[k] = st.slider(k, value=0.5, min_value=0.0, max_value=1.0)
         elif v == StringIO:
             init_values[k] = st.file_uploader(k, accept_multiple_files=False)
         elif v == str:

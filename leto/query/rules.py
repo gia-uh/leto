@@ -3,6 +3,7 @@ from typing import Dict
 from leto.query import *
 from leto.utils import get_model
 from spacy import Language
+from fuzzywuzzy import fuzz
 
 
 class RuleBasedQueryParser(QueryParser):
@@ -26,40 +27,40 @@ class RuleBasedQueryParser(QueryParser):
         return e[: -len(words)]
 
     def parse(self, query: str, storage) -> Query:
-        nlp = get_model()
-        doc = nlp(query)
+        # nlp = get_model()
+        # doc = nlp(query)
 
         entities = [] #[e for e in doc.ents] or [n for n in doc.noun_chunks]
         relations = [] #[token for token in doc if token.pos_ in ["VERB", "NOUN"]]
         attributes = [] #[token for token in doc if token.pos_ in ["NOUN", "ADJ"] and token.text != "much"]
 
         for entity in storage.entities:
-            if entity in query:
+            if entity.lower() in query.lower():
                 entities.append(entity)
 
-        for attr in storage.relationships:
-            if attr.replace("_", " ") in query:
-                relations.append(attr)
+        for rel in storage.relationships:
+            if rel.replace("_", " ").lower() in query.lower():
+                relations.append(rel)
 
         for attr in storage.attributes:
-            if attr.replace("_", " ") in query:
+            if attr.replace("_", " ").lower() in query.lower():
                 attributes.append(attr)
 
-        query_hints = self._get_query_hints()
+        # query_hints = self._get_query_hints()
 
-        best_query = None
-        best_query_matches = 0
+        # best_query = None
+        # best_query_matches = 0
 
-        for query_type, hints in query_hints.items():
-            found_hints = len([token.lemma_ for token in doc if token.lemma_ in hints])
-            if found_hints > best_query_matches:
-                best_query = query_type(
-                    entities=entities, relations=relations, attributes=attributes
-                )
-                best_query_matches = found_hints
+        # for query_type, hints in query_hints.items():
+        #     found_hints = len([token.lemma_ for token in doc if token.lemma_ in hints])
+        #     if found_hints > best_query_matches:
+        #         best_query = query_type(
+        #             entities=entities, relations=relations, attributes=attributes
+        #         )
+        #         best_query_matches = found_hints
 
-        if best_query is not None:
-            return best_query
+        # if best_query is not None:
+        #     return best_query
 
         return Query(entities=entities, relations=relations, attributes=attributes)
 
