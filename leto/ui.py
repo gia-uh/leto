@@ -102,7 +102,7 @@ def example_queries():
 
     for q in [
         "What is a symptom of coronavirus",
-        "total covid cases in Spain",
+        "daily covid cases in Spain",
         "Spain and Cuba, cumulative covid cases",
         "Spain and Cuba, daily covid cases, monthly mean",
         "tourists in Spain",
