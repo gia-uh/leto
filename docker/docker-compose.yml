@@ -14,7 +14,7 @@ services:
       - ../data/opennre/:/home/coder/.opennre
       - vscode-leto:/home/coder/.vscode-server
     working_dir: "/home/coder/leto"
-    command: ["streamlit", "run", "leto.py"]
+    command: ["./docker/wait-for-it.sh", "neo4j:7687", "--","streamlit", "run", "leto.py"]
     depends_on:
       - neo4j
 
@@ -41,7 +41,7 @@ services:
     volumes:
       - "../data/neo4j:/var/lib/neo4j/data"
     environment:
-      - NEO4J_AUTH=neo4j/12345678
+      - NEO4J_AUTH=neo4j/letoai
 
 volumes:
   vscode-leto:
