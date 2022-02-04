@@ -32,12 +32,6 @@ class CSVLoader(Loader):
     """
     Load structured data in table format from a CSV file.
     """
-
-    DATE_NAMES = [
-        "date",
-        "timestamp",
-    ]
-
     def __init__(self, path: BytesIO) -> None:
         self.path = path
 
@@ -90,7 +84,7 @@ class CSVLoader(Loader):
             yield e
 
             # Create all relations
-            for column in entity_columns[1:]:
+            for column in entity_columns:
                 entity_from = e
                 entity_to = names_to_entities[getattr(tupl, column)]
                 label = f"has_{column.lower()}"
