@@ -6,6 +6,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+          architecture: x64
+
+      - name: Setup dependencies
+        run: pip install -r docker/requirements.txt
+
+      - name: Check format
+        run: black --check leto/
+
+      - name: Run tests
+        run: pytest leto tests --doctest-modules --cov leto
+
   docker:
     runs-on: ubuntu-latest
     steps:
