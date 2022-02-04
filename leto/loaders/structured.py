@@ -78,7 +78,7 @@ class CSVLoader(Loader):
             attributes = { c:getattr(tupl, c) for c in attribute_columns }
 
             name = getattr(tupl, main_entity_id) if main_entity_id is not None else str(uuid.uuid4())
-            type = main_entity_id.title() if main_entity_id is not None else "Fact"
+            type = main_entity_id.title() if main_entity_id is not None else "Event"
 
             e = Entity(name=name, type=type, **attributes)
             yield e
