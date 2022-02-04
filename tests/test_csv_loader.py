@@ -90,3 +90,19 @@ def test_implicit_entities():
     assert isinstance(tuples[7], Relation)
     assert tuples[7].label == "has_team"
     assert tuples[7].entity_to.name == "Avengers"
+
+
+def test_date():
+    loader = CSVLoader(path=datapath / "date.csv")
+    tuples = list(loader.load())
+
+    assert len(tuples) == 13
+
+    assert isinstance(tuples[3], Entity)
+    assert tuples[3].type == "Fact"
+    assert tuples[3].date == "2020-01"
+    assert tuples[3].deaths == 10
+
+    assert isinstance(tuples[4], Relation)
+    assert tuples[4].entity_to.name == "Spain"
+    assert tuples[4].label == "has_country"

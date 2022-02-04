@@ -98,7 +98,13 @@ class CSVLoader(Loader):
         if df.dtype in ["float64", "float32", "int"]:
             return "attribute"
 
+        if name == "date":
+            return "attribute"
+
         if df.dtype == "object" and df.is_unique:
             return "index"
+
+        if df.dtype == "object" and df.str.len().max() > 30:
+            return "attribute"
 
         return "relation"
