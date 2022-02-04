@@ -83,7 +83,7 @@ def test_implicit_entities():
     assert len(tuples) == 26
 
     assert isinstance(tuples[6], Entity)
-    assert tuples[6].type == "Fact"
+    assert tuples[6].type == "Event"
     assert tuples[6].year == 2020
     assert tuples[6].missions == 15
 
@@ -99,10 +99,27 @@ def test_date():
     assert len(tuples) == 13
 
     assert isinstance(tuples[3], Entity)
-    assert tuples[3].type == "Fact"
+    assert tuples[3].type == "Event"
     assert tuples[3].date == "2020-01"
     assert tuples[3].deaths == 10
 
     assert isinstance(tuples[4], Relation)
     assert tuples[4].entity_to.name == "Spain"
     assert tuples[4].label == "has_country"
+
+
+def test_date():
+    loader = CSVLoader(path=datapath / "entity_with_text.csv")
+    tuples = list(loader.load())
+
+    assert len(tuples) == 16
+
+    assert isinstance(tuples[2], Relation)
+    assert tuples[2].label == "mention"
+    assert tuples[2].entity_from.name == "John Doe"
+    assert tuples[2].entity_to.name == "New York"
+
+    assert isinstance(tuples[4], Relation)
+    assert tuples[4].label == "mention"
+    assert tuples[4].entity_from.name == "John Doe"
+    assert tuples[4].entity_to.name == "Microsoft Ltd."

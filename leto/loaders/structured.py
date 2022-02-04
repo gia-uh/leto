@@ -1,14 +1,14 @@
-from re import L
+import uuid
+from collections.abc import Mapping
+from io import BytesIO
 from typing import List
 
-import uuid
+import pandas as pd
+from leto.loaders.unstructured import Language
+from leto.model import Entity, Relation, Source
+from leto.utils import get_model
 
 from ..loaders import Loader
-import pandas as pd
-from itertools import permutations, product
-from io import BytesIO
-from leto.model import Entity, Relation, Source
-from collections.abc import Mapping
 
 
 class FrozenDict(Mapping):
@@ -32,8 +32,9 @@ class CSVLoader(Loader):
     """
     Load structured data in table format from a CSV file.
     """
-    def __init__(self, path: BytesIO) -> None:
+    def __init__(self, path: BytesIO, language: Language = Language.en) -> None:
         self.path = path
+        self.language = language
 
     @classmethod
     def title(cls):
@@ -41,6 +42,12 @@ class CSVLoader(Loader):
 
     def _get_source(self, name, **metadata) -> Source:
         return Source(name, method="csv", loader="CSVLoader", **metadata)
+
+    def _strip_column_name(self, column_name:str):
+        if ":" in column_name:
+            return column_name.split(":")[0]
+
+        return column_name
 
     def _load(self):
         df = pd.read_csv(self.path)
@@ -61,50 +68,69 @@ class CSVLoader(Loader):
                 entity_columns.append(c)
 
         names_to_entities = {}
-        attribute_columns = [ c for c,t in column_types.items() if t == "attribute" ]
+        attribute_columns = [ c for c,t in column_types.items() if c not in entity_columns ]
 
         # Create all other entities
         for column in entity_columns:
-            for tupl in df.itertuples():
-                name = getattr(tupl, column)
+            for i, tupl in df.iterrows():
+                name = tupl[column]
                 type = column.title()
 
                 e = Entity(name=name, type=type)
                 names_to_entities[name] = e
                 yield e
 
-        # Create the main entity
-        for tupl in df.itertuples():
-            attributes = { c:getattr(tupl, c) for c in attribute_columns }
 
-            name = getattr(tupl, main_entity_id) if main_entity_id is not None else str(uuid.uuid4())
+        text_columns = [c for c,t in column_types.items() if t == "text"]
+        nlp = get_model(self.language) if text_columns else None
+
+        # Create the main entity
+        for i, tupl in df.iterrows():
+            attributes = { self._strip_column_name(c):getattr(tupl, c) for c in attribute_columns }
+
+            name = tupl[main_entity_id] if main_entity_id is not None else str(uuid.uuid4())
             type = main_entity_id.title() if main_entity_id is not None else "Event"
 
-            e = Entity(name=name, type=type, **attributes)
-            yield e
+            main = Entity(name=name, type=type, **attributes)
+            yield main
 
             # Create all relations
             for column in entity_columns:
-                entity_from = e
-                entity_to = names_to_entities[getattr(tupl, column)]
+                entity_to = names_to_entities[tupl[column]]
                 label = f"has_{column.lower()}"
 
-                yield Relation(label=label, entity_from=entity_from, entity_to=entity_to)
+                yield Relation(label=label, entity_from=main, entity_to=entity_to)
+
+            # Create all entities mentioned in the text fields
+            for c in text_columns:
+                text = tupl[c]
+                entities = [Entity(e.text, e.label_) for e in nlp(text).ents]
+
+                for e in entities:
+                    yield e
+                    yield Relation(entity_from=main, entity_to=e, label="mention", field=c)
+
 
 
     def _infer_type(self, name: str, df: pd.Series):
         # Try a bunch of heuristics
 
-        if df.dtype in ["float64", "float32", "int"]:
-            return "attribute"
+        if name.endswith(":text"):
+            return "text"
 
-        if name == "date":
-            return "attribute"
+        if name == "date" or name.endswith(":date"):
+            return "date"
+
+        if df.dtype in ["float64", "float32", "int"]:
+            return "number"
 
         if df.dtype == "object" and df.is_unique:
             return "index"
 
         if df.dtype == "object" and df.str.len().max() > 30:
-            return "attribute"
+            return "text"
 
-        return "relation"
+        if df.dtype == "object":
+            return "relation"
+
+        return "attribute"
