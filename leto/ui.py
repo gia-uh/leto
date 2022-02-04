@@ -21,6 +21,7 @@ def bootstrap():
             parsers = {cls.__name__: cls for cls in get_parsers()}
             parser_cls = parsers[st.selectbox("🧙‍♂️ Query parser", list(parsers))]
             parser: QueryParser = parser_cls(storage)
+            query_breadth = st.number_input("🔮 Query breadth", value=3, min_value=1)
 
         with st.expander("🔥 Load new data", True):
             load_data(storage)
@@ -41,12 +42,12 @@ def bootstrap():
         query_text = st.text_input("🔮 Enter a query for LETO", value=st.session_state.get('query_input', ""))
 
         if query_text:
-            query = parser.parse(query_text, storage)
+            query = parser.parse(query_text)
 
             st.write("#### 💡 Interpreting query as:")
             st.code(query)
 
-            response = resolver.resolve(query)
+            response = resolver.resolve(query, query_breadth)
 
             if not response:
                 st.error("😨 No data was found to answer that query!")

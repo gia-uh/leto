@@ -107,6 +107,15 @@ class CSVLoader(Loader):
                 entities = [Entity(e.text, e.label_) for e in nlp(text).ents]
 
                 for e in entities:
+                    if e.type == "LOC":
+                        e.type = "Location"
+                    elif e.type == "PER":
+                        e.type = "Person"
+                    elif e.type == "ORG":
+                        e.type = "Organization"
+                    else:
+                        continue
+
                     yield e
                     yield Relation(entity_from=main, entity_to=e, label="mention", field=c)
 

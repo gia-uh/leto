@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from typing import Dict
+import regex
 
 from leto.query import *
 from leto.utils import get_model
@@ -11,15 +12,8 @@ class RuleBasedQueryParser(QueryParser):
     AGG_KEYWORDS = ['mean', 'sum']
     GROUP_KEYWORDS = ['yearly', 'monthly']
 
-    def __init__(self, *args) -> None:
-        pass
-
     @abstractmethod
     def _get_model(self) -> Language:
-        pass
-
-    @abstractmethod
-    def _get_query_hints(self) -> Dict[type, str]:
         pass
 
     def _make_entity(self, e):
@@ -30,9 +24,43 @@ class RuleBasedQueryParser(QueryParser):
 
         return e[: -len(words)]
 
-    def parse(self, query: str, storage) -> Query:
+    def _match(self, query:str, candidates:List[str]):
+        matches = []
+
+        for candidate in candidates:
+            error = max(1, min(5, int(0.2 * len(candidate))))
+
+            try:
+                re = fr"(?e)(\s{candidate.lower()}\s){{e<={error}}}"
+                best_match = regex.search(re, query)
+
+                if best_match is not None:
+                    matches.append(candidate)
+                    span = best_match.span()
+                    query = query[:span[0]] + query[span[1]:]
+            except regex.error:
+                pass
+
+        return query, matches
+
+
+    def parse(self, query: str) -> Query:
         # nlp = get_model()
         # doc = nlp(query)
+
+        query = " " + " ".join(query.lower().split()) + " "
+
+        # noun_chunks = set(chunk.text for chunk in doc.noun_chunks)
+
+        all_entities = sorted(self.storage.get_entity_names(), key=len, reverse=True)
+        all_relations = self.storage.get_relationship_types()
+        all_attributes = self.storage.get_attribute_types()
+
+        query, entities = self._match(query, all_entities)
+        query, relations = self._match(query, all_relations)
+        query, attributes = self._match(query, all_attributes)
+
+        return Query(entities, relations, attributes)
 
         aggregate = None
         groupby = None
@@ -84,27 +112,7 @@ class SpanishRuleParser(RuleBasedQueryParser):
     def _get_model(self):
         return get_model("es_core_news_sm")
 
-    def _get_query_hints(self) -> Dict[type, str]:
-        return {
-            WhatQuery: ["qué"],
-            WhoQuery: ["quién"],
-            WhichQuery: ["cuál"],
-            WhereQuery: ["dónde"],
-            HowManyQuery: ["cuánto"],
-            PredictQuery: ["qué", "influir", "predecir", "cuál"],
-        }
-
 
 class EnglishRuleParser(RuleBasedQueryParser):
     def _get_model(self):
         return get_model("en_core_web_sm")
-
-    def _get_query_hints(self) -> Dict[type, str]:
-        return {
-            WhatQuery: ["what"],
-            WhoQuery: ["who"],
-            WhichQuery: ["which"],
-            WhereQuery: ["where"],
-            HowManyQuery: ["how", "much"],
-            PredictQuery: ["what", "influence", "predict", "which"],
-        }

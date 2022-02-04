@@ -15,6 +15,18 @@ class Storage(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def get_relationship_types(self) -> List[str]:
+        pass
+
+    @abc.abstractmethod
+    def get_attribute_types(self) -> List[str]:
+        pass
+
+    @abc.abstractmethod
+    def get_entity_names(self) -> List[str]:
+        pass
+
+    @abc.abstractmethod
     def get_query_resolver(self) -> QueryResolver:
         pass
 

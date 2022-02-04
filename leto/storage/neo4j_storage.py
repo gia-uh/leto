@@ -370,7 +370,7 @@ class GraphQueryResolver(QueryResolver):
 
         query.entities = list(entities)
 
-    def _resolve(self, query: Query) -> Iterable[Relation]:
+    def _resolve(self, query: Query, breadth:int) -> Iterable[Relation]:
         # self._preprocess_query(query)
         entities = query.entities
         relations = query.relations

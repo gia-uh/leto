@@ -2,6 +2,7 @@ import abc
 from dataclasses import dataclass
 from typing import Iterable, List, Optional
 from leto.model import Entity, Relation
+from fuzzywuzzy import process
 
 
 @dataclass
@@ -50,17 +51,23 @@ class PredictQuery(Query):
 
 class QueryResolver(abc.ABC):
     @abc.abstractmethod
-    def _resolve(self, query: Query) -> Iterable[Relation]:
+    def _resolve(self, query: Query, breadth:int) -> Iterable[Relation]:
         pass
 
-    def resolve(self, query: Query) -> List[Relation]:
-        return list(set(self._resolve(query)))
+    def resolve(self, query: Query, breadth: int=0) -> List[Relation]:
+        return list(set(self._resolve(query, breadth)))
 
 
 class QueryParser(abc.ABC):
+    def __init__(self, storage) -> None:
+        from leto.storage import Storage
+
+        self.storage: Storage = storage
+
     @abc.abstractmethod
-    def parse(self, query: str, storage: "Storage") -> Query:
+    def parse(self, query: str) -> Query:
         pass
+
 
 
 def get_parsers():
