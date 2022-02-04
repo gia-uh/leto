@@ -15,7 +15,7 @@ import streamlit as st
 
 
 username = os.getenv("NEO4J_USER", "neo4j")
-password = os.getenv("NEO4J_PASSWORD", "12345678")
+password = os.getenv("NEO4J_PASSWORD", "letoai")
 neo4jVersion = os.getenv("NEO4J_VERSION", "")
 port = os.getenv("PORT", 7687)
 url = os.getenv("NEO4J_URI", f"bolt://neo4j:{port}")

@@ -9,8 +9,8 @@ class Query(abc.ABC):
     entities: List[str]
     relations: List[str]
     attributes: List[str]
-    aggregate: Optional[str]
-    groupby: Optional[str]
+    aggregate: Optional[str] = ""
+    groupby: Optional[str] = ""
 
 
 @dataclass

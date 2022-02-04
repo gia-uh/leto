@@ -1,13 +1,14 @@
+from re import L
 from typing import List
 
 import uuid
+
 from ..loaders import Loader
 import pandas as pd
-from fuzzywuzzy import process
 from itertools import permutations, product
 from io import BytesIO
 from leto.model import Entity, Relation, Source
-from collections import Mapping
+from collections.abc import Mapping
 
 
 class FrozenDict(Mapping):
@@ -50,45 +51,63 @@ class CSVLoader(Loader):
     def _load(self):
         df = pd.read_csv(self.path)
 
-        column_types = { column: self._infer_type(column, df[column]) for column in df.columns }
+        column_types = {
+            column: self._infer_type(column, df[column]) for column in df.columns
+        }
+
+        entity_columns = []
+        main_entity_id = None
+
+        for c,t in column_types.items():
+            if t == "index" and main_entity_id is None:
+                main_entity_id = c
+                continue
+
+            if t in ['index', 'relation']:
+                entity_columns.append(c)
 
         names_to_entities = {}
+        attribute_columns = [ c for c,t in column_types.items() if t == "attribute" ]
 
-        for column, type in column_types.items():
-            if type == "entity":
-                for row in df[column].unique():
-                    e = Entity(row, column.title())
-                    names_to_entities[row] = e
-                    yield e
+        # Create all other entities
+        for column in entity_columns:
+            for tupl in df.itertuples():
+                name = getattr(tupl, column)
+                type = column.title()
 
-        if "date" in column_types.values():
-            date_column = [c for c,t in column_types.items() if t == 'date'][0]
-
-            for row in df.itertuples():
-                entities = { name: names_to_entities[getattr(row, name)] for name in column_types if column_types[name] == "entity" }
-                attributes = { name: getattr(row, name) for name in column_types if column_types[name] == "attribute" }
-                attributes = { k:v for k,v in attributes.items() if pd.notna(v) }
-
-                e = Entity(str(uuid.uuid4()), type="TimeseriesEntry", date=getattr(row, date_column), **attributes)
+                e = Entity(name=name, type=type)
+                names_to_entities[name] = e
                 yield e
 
-                for name, entity in entities.items():
-                    yield Relation(name, e, entity)
+        # Create the main entity
+        for tupl in df.itertuples():
+            attributes = { c:getattr(tupl, c) for c in attribute_columns }
+
+            name = getattr(tupl, main_entity_id) if main_entity_id is not None else str(uuid.uuid4())
+            type = main_entity_id.title() if main_entity_id is not None else "Fact"
+
+            e = Entity(name=name, type=type, **attributes)
+            yield e
+
+            # Create all relations
+            for column in entity_columns[1:]:
+                entity_from = e
+                entity_to = names_to_entities[getattr(tupl, column)]
+                label = f"has_{column.lower()}"
+
+                yield Relation(label=label, entity_from=entity_from, entity_to=entity_to)
 
 
-    def _infer_type(self, name:str, df: pd.Series):
+    def _infer_type(self, name: str, df: pd.Series):
         # Try a bunch of heuristics
 
         if df.dtype in ["float64", "float32", "int"]:
             return "attribute"
 
-        if name in self.DATE_NAMES:
-            return "date"
+        if df.dtype == "object" and df.is_unique:
+            return "index"
 
-        if "code" in name.split("_"):
-            return None
-
-        return "entity"
+        return "relation"
 
 
 class MultiCSVLoader(Loader):

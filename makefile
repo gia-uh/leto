@@ -20,7 +20,7 @@ clean-neo4j:
 	sudo rm -rf data/neo4j
 
 test:
-	docker-compose -f docker/docker-compose.yml run leto pytest leto tests --doctest-modules --cov leto
+	docker-compose -f docker/docker-compose.yml run leto pytest tests
 
 format:
 	docker-compose -f docker/docker-compose.yml run leto black leto

@@ -1,17 +1,16 @@
-import json
-from typing import Iterable
-import spacy
-import wikipedia
-from leto.model import Entity, Relation, Source
-from leto.storage.neo4j_storage import GraphStorage
-from leto.loaders.unstructured import Language
-from leto.utils import get_model
-import subprocess
-import urllib
-from string import punctuation
-from leto.loaders import Loader
 import itertools
+import json
+import urllib
+from typing import Iterable
+
 import opennre
+import spacy
+from leto.loaders import Loader
+from leto.loaders.unstructured import Language
+from leto.model import Entity, Relation, Source
+from leto.utils import get_model
+
+import wikipedia
 
 
 def wikifier(text, lang="en", threshold=0.7):
@@ -242,15 +241,3 @@ def seed_from_wikipedia(wikipedia_page_title: str, language: Language = Language
 
 def query_wikipedia(query: str):
     return wikipedia.search(query)
-
-
-"""
-Example:
-
-seed_from_wikipedia("October revolution")
-seed_from_wikipedia("World War II")
-seed_from_wikipedia("Lenin")
-"""
-
-if __name__ == "__main__":
-    seed_from_wikipedia("COVID-19")
