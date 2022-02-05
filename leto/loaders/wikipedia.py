@@ -81,7 +81,7 @@ class WikipediaLoader(Loader):
     """
 
     def __init__(
-        self, query: str, language: Language, sensitivity: float=0.7
+        self, query: str, language: Language, sensitivity: float = 0.7
     ) -> None:
         self.query = query
         self.language = language

@@ -51,10 +51,10 @@ class PredictQuery(Query):
 
 class QueryResolver(abc.ABC):
     @abc.abstractmethod
-    def _resolve(self, query: Query, breadth:int) -> Iterable[Relation]:
+    def _resolve(self, query: Query, breadth: int) -> Iterable[Relation]:
         pass
 
-    def resolve(self, query: Query, breadth: int=0) -> List[Relation]:
+    def resolve(self, query: Query, breadth: int = 0) -> List[Relation]:
         return list(set(self._resolve(query, breadth)))
 
 
@@ -67,7 +67,6 @@ class QueryParser(abc.ABC):
     @abc.abstractmethod
     def parse(self, query: str) -> Query:
         pass
-
 
 
 def get_parsers():

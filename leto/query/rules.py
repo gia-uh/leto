@@ -9,8 +9,8 @@ from fuzzywuzzy import fuzz
 
 
 class RuleBasedQueryParser(QueryParser):
-    AGG_KEYWORDS = ['mean', 'sum']
-    GROUP_KEYWORDS = ['yearly', 'monthly']
+    AGG_KEYWORDS = ["mean", "sum"]
+    GROUP_KEYWORDS = ["yearly", "monthly"]
 
     @abstractmethod
     def _get_model(self) -> Language:
@@ -24,7 +24,7 @@ class RuleBasedQueryParser(QueryParser):
 
         return e[: -len(words)]
 
-    def _match(self, query:str, candidates:List[str]):
+    def _match(self, query: str, candidates: List[str]):
         matches = []
 
         for candidate in candidates:
@@ -37,12 +37,11 @@ class RuleBasedQueryParser(QueryParser):
                 if best_match is not None:
                     matches.append(candidate)
                     span = best_match.span()
-                    query = query[:span[0]] + query[span[1]:]
+                    query = query[: span[0]] + query[span[1] :]
             except regex.error:
                 pass
 
         return query, matches
-
 
     def parse(self, query: str) -> Query:
         # nlp = get_model()
@@ -65,9 +64,11 @@ class RuleBasedQueryParser(QueryParser):
         aggregate = None
         groupby = None
 
-        entities = [] #[e for e in doc.ents] or [n for n in doc.noun_chunks]
-        relations = [] #[token for token in doc if token.pos_ in ["VERB", "NOUN"]]
-        attributes = [] #[token for token in doc if token.pos_ in ["NOUN", "ADJ"] and token.text != "much"]
+        entities = []  # [e for e in doc.ents] or [n for n in doc.noun_chunks]
+        relations = []  # [token for token in doc if token.pos_ in ["VERB", "NOUN"]]
+        attributes = (
+            []
+        )  # [token for token in doc if token.pos_ in ["NOUN", "ADJ"] and token.text != "much"]
 
         for entity in storage.entities:
             if entity.lower() in query.lower():
@@ -105,7 +106,13 @@ class RuleBasedQueryParser(QueryParser):
         # if best_query is not None:
         #     return best_query
 
-        return Query(entities=entities, relations=relations, attributes=attributes, aggregate=aggregate, groupby=groupby)
+        return Query(
+            entities=entities,
+            relations=relations,
+            attributes=attributes,
+            aggregate=aggregate,
+            groupby=groupby,
+        )
 
 
 class SpanishRuleParser(RuleBasedQueryParser):

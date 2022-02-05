@@ -32,6 +32,7 @@ class CSVLoader(Loader):
     """
     Load structured data in table format from a CSV file.
     """
+
     def __init__(self, path: BytesIO, language: Language = Language.en) -> None:
         self.path = path
         self.language = language
@@ -43,7 +44,7 @@ class CSVLoader(Loader):
     def _get_source(self, name, **metadata) -> Source:
         return Source(name, method="csv", loader="CSVLoader", **metadata)
 
-    def _strip_column_name(self, column_name:str):
+    def _strip_column_name(self, column_name: str):
         if ":" in column_name:
             return column_name.split(":")[0]
 
@@ -59,16 +60,18 @@ class CSVLoader(Loader):
         entity_columns = []
         main_entity_id = None
 
-        for c,t in column_types.items():
+        for c, t in column_types.items():
             if t == "index" and main_entity_id is None:
                 main_entity_id = c
                 continue
 
-            if t in ['index', 'relation']:
+            if t in ["index", "relation"]:
                 entity_columns.append(c)
 
         names_to_entities = {}
-        attribute_columns = [ c for c,t in column_types.items() if c not in entity_columns ]
+        attribute_columns = [
+            c for c, t in column_types.items() if c not in entity_columns
+        ]
 
         # Create all other entities
         for column in entity_columns:
@@ -80,15 +83,20 @@ class CSVLoader(Loader):
                 names_to_entities[name] = e
                 yield e
 
-
-        text_columns = [c for c,t in column_types.items() if t == "text"]
+        text_columns = [c for c, t in column_types.items() if t == "text"]
         nlp = get_model(self.language) if text_columns else None
 
         # Create the main entity
         for i, tupl in df.iterrows():
-            attributes = { self._strip_column_name(c):getattr(tupl, c) for c in attribute_columns }
+            attributes = {
+                self._strip_column_name(c): getattr(tupl, c) for c in attribute_columns
+            }
 
-            name = tupl[main_entity_id] if main_entity_id is not None else str(uuid.uuid4())
+            name = (
+                tupl[main_entity_id]
+                if main_entity_id is not None
+                else str(uuid.uuid4())
+            )
             type = main_entity_id.title() if main_entity_id is not None else "Event"
 
             main = Entity(name=name, type=type, **attributes)
@@ -117,9 +125,9 @@ class CSVLoader(Loader):
                         continue
 
                     yield e
-                    yield Relation(entity_from=main, entity_to=e, label="mention", field=c)
-
-
+                    yield Relation(
+                        entity_from=main, entity_to=e, label="mention", field=c
+                    )
 
     def _infer_type(self, name: str, df: pd.Series):
         # Try a bunch of heuristics

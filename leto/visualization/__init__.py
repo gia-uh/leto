@@ -55,7 +55,11 @@ class Visualizer(abc.ABC):
 class DummyVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
         def visualization():
-            st.code("\n".join(str(r) for r in response if r.entity_from.type != "TimeseriesEntry"))
+            st.code(
+                "\n".join(
+                    str(r) for r in response if r.entity_from.type != "TimeseriesEntry"
+                )
+            )
 
         return Visualization(title="📋 Returned tuples", score=0, run=visualization)
 
@@ -63,47 +67,35 @@ class DummyVisualizer(Visualizer):
 class GraphVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
         def visualization():
-            graph = graphviz.Digraph()
+            nodes = set()
+            edges = set()
 
             entities = set(query.entities)
             main_entities = set()
 
-            skip_types = frozenset(['Source', 'TimeseriesEntry'])
+            skip_types = frozenset(["Source", "Event"])
 
             for tuple in response:
                 for e in [tuple.entity_from, tuple.entity_to]:
-                    if e.type in skip_types:
-                        continue
+                    nodes.add(agraph.Node(id=e.name, label=e.name))
 
-                    color = "white"
-
-                    if e.name in entities:
-                        color = "green"
-                        main_entities.add(e)
-
-                    graph.node(e.name, fillcolor=color, style="filled")
-
-                if tuple.label == "has_source":
-                    continue
-
-                if tuple.entity_from.type in skip_types or tuple.entity_to.type in skip_types:
-                    continue
-
-                graph.edge(
-                    tuple.entity_from.name, tuple.entity_to.name, label=tuple.label
+                edges.add(
+                    agraph.Edge(
+                        source=tuple.entity_from.name,
+                        target=tuple.entity_to.name,
+                        label=tuple.label,
+                        type="CURVE_SMOOTH",
+                    )
                 )
 
-            for e in main_entities:
-                for attr, value in e.attrs.items():
-                    graph.node(
-                        f"{attr}={value}",
-                        shape="rectangle",
-                        fillcolor="yellow",
-                        style="filled",
-                    )
-                    graph.edge(e.name, f"{attr}={value}")
+            config = agraph.Config(
+                height=500,
+                directed=True,
+                nodeHighlightBehavior=True,
+            )
 
-            st.write(graph)
+            result = agraph.agraph(nodes=nodes, edges=edges, config=config)
+            print(result)
 
         return Visualization(
             title="🔗 Entity graph",
@@ -116,7 +108,9 @@ class MapVisualizer(Visualizer):
     def __init__(self) -> None:
         with open("/home/coder/leto/data/countries.geo.json") as fp:
             self.data = json.load(fp)["features"]
-            self.visualizables = set(feature['properties']['name'] for feature in self.data)
+            self.visualizables = set(
+                feature["properties"]["name"] for feature in self.data
+            )
 
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
         mapeable = []
@@ -292,7 +286,7 @@ class TimeseriesVisualizer(Visualizer):
         for r in response:
             e = r.entity_from
 
-            if e.type != 'TimeseriesEntry':
+            if e.type != "TimeseriesEntry":
                 continue
 
             if r.entity_to.type == "Source":
@@ -309,16 +303,20 @@ class TimeseriesVisualizer(Visualizer):
 
                 entity_field = r.label
                 attribute_field = attr
-                data.append({r.label: r.entity_to.name, "date": e.attrs['date'], attr: value})
+                data.append(
+                    {r.label: r.entity_to.name, "date": e.attrs["date"], attr: value}
+                )
 
         if not data:
             return Visualization.Empty()
 
         df = pd.DataFrame(data)
-        df['date'] = pd.to_datetime(df['date'])
+        df["date"] = pd.to_datetime(df["date"])
 
         if query.groupby:
-            df = df.groupby([entity_field, pd.Grouper(key='date', freq=query.groupby[0].upper())])
+            df = df.groupby(
+                [entity_field, pd.Grouper(key="date", freq=query.groupby[0].upper())]
+            )
             df = getattr(df, query.aggregate)().reset_index()
 
         def visualization():

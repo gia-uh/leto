@@ -21,7 +21,9 @@ def bootstrap():
             parsers = {cls.__name__: cls for cls in get_parsers()}
             parser_cls = parsers[st.selectbox("🧙‍♂️ Query parser", list(parsers))]
             parser: QueryParser = parser_cls(storage)
-            query_breadth = int(st.number_input("🔮 Query breadth", value=3, min_value=1))
+            query_breadth = int(
+                st.number_input("🔮 Query breadth", value=3, min_value=1)
+            )
 
         with st.expander("🔥 Load new data", True):
             load_data(storage)
@@ -39,7 +41,9 @@ def bootstrap():
         example_queries()
 
     with main:
-        query_text = st.text_input("🔮 Enter a query for LETO", value=st.session_state.get('query_input', ""))
+        query_text = st.text_input(
+            "🔮 Enter a query for LETO", value=st.session_state.get("query_input", "")
+        )
 
         if query_text:
             query = parser.parse(query_text)
@@ -99,7 +103,7 @@ def example_queries():
     example_query = ""
 
     def set_example_query(q):
-        st.session_state.query_input=q
+        st.session_state.query_input = q
 
     for q in [
         "What is a symptom of coronavirus",

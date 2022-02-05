@@ -288,7 +288,7 @@ class GraphQueryResolver(QueryResolver):
     def __init__(self, storage: GraphStorage) -> None:
         self.storage = storage
 
-    def _resolve(self, query: Query, breadth:int) -> Iterable[Relation]:
+    def _resolve(self, query: Query, breadth: int) -> Iterable[Relation]:
         if not query.entities:
             return
 
@@ -309,19 +309,11 @@ class GraphQueryResolver(QueryResolver):
                     n1 = e.start_node
                     n2 = e.end_node
 
-                    print(n1, flush=True)
-
                     yield Relation(
                         label=e.type,
-                        entity_from=Entity(
-                            type=list(n1.labels)[0],
-                            **n1._properties
-                        ),
-                        entity_to=Entity(
-                            type=list(n2.labels)[0],
-                            **n2._properties
-                        ),
-                        **e._properties
+                        entity_from=Entity(type=list(n1.labels)[0], **n1._properties),
+                        entity_to=Entity(type=list(n2.labels)[0], **n2._properties),
+                        **e._properties,
                     )
 
     @staticmethod
@@ -329,6 +321,6 @@ class GraphQueryResolver(QueryResolver):
         result = []
 
         for record in tx.run(query):
-            result.append(record['edges'])
+            result.append(record["edges"])
 
         return result
