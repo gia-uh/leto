@@ -27,6 +27,7 @@ jobs:
         run: pytest leto tests --doctest-modules --cov leto
 
   docker:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
