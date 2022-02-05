@@ -9,6 +9,8 @@ import pandas as pd
 import plotly.express as px
 import pydeck as pdk
 import streamlit as st
+import streamlit_agraph as agraph
+
 from leto.model import Relation
 from leto.query import (
     HowManyQuery,
