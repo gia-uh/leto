@@ -112,14 +112,9 @@ def test_date():
     loader = CSVLoader(path=datapath / "entity_with_text.csv")
     tuples = list(loader.load())
 
-    assert len(tuples) == 16
+    assert len(tuples) == 10
 
     assert isinstance(tuples[2], Relation)
     assert tuples[2].label == "mention"
     assert tuples[2].entity_from.name == "John Doe"
-    assert tuples[2].entity_to.name == "New York"
-
-    assert isinstance(tuples[4], Relation)
-    assert tuples[4].label == "mention"
-    assert tuples[4].entity_from.name == "John Doe"
-    assert tuples[4].entity_to.name == "Microsoft Ltd."
+    assert tuples[2].entity_to.name == "Microsoft Ltd."
