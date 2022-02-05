@@ -21,7 +21,7 @@ def bootstrap():
             parsers = {cls.__name__: cls for cls in get_parsers()}
             parser_cls = parsers[st.selectbox("🧙‍♂️ Query parser", list(parsers))]
             parser: QueryParser = parser_cls(storage)
-            query_breadth = st.number_input("🔮 Query breadth", value=3, min_value=1)
+            query_breadth = int(st.number_input("🔮 Query breadth", value=3, min_value=1))
 
         with st.expander("🔥 Load new data", True):
             load_data(storage)
