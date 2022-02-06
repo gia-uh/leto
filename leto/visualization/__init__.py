@@ -9,7 +9,9 @@ import pandas as pd
 import plotly.express as px
 import pydeck as pdk
 import streamlit as st
-import streamlit_agraph as agraph
+from pyvis.network import Network
+import networkx as nx
+import json
 
 from leto.model import Relation
 from leto.query import (
@@ -67,8 +69,8 @@ class DummyVisualizer(Visualizer):
 class GraphVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
         def visualization():
-            nodes = set()
-            edges = set()
+            graph = nx.DiGraph()
+            entity_types = {}
 
             entities = set(query.entities)
             main_entities = set()
@@ -77,25 +79,42 @@ class GraphVisualizer(Visualizer):
 
             for tuple in response:
                 for e in [tuple.entity_from, tuple.entity_to]:
-                    nodes.add(agraph.Node(id=e.name, label=e.name))
+                    if e.type not in entity_types:
+                        entity_types[e.type] = len(entity_types)
 
-                edges.add(
-                    agraph.Edge(
-                        source=tuple.entity_from.name,
-                        target=tuple.entity_to.name,
-                        label=tuple.label,
-                        type="CURVE_SMOOTH",
+                    label = e.name
+
+                    if len(label) > 8:
+                        label = label[:6] + "..."
+
+                    graph.add_node(
+                        e.name,
+                        shape="circle",
+                        label=label,
+                        title=f"{e.name} <b>:{e.type}</b>",
+                        group=entity_types[e.type],
                     )
+
+                graph.add_edge(
+                    tuple.entity_from.name,
+                    tuple.entity_to.name,
+                    label=tuple.label,
+                    arrows="to",
                 )
 
-            config = agraph.Config(
-                height=500,
-                directed=True,
-                nodeHighlightBehavior=True,
-            )
+            nt = Network(height="500px", width="100%")
+            nt.from_nx(graph)
+            nt.toggle_physics(True)
+            nt.set_options(json.dumps({
+                'barnessHut': {
+                    'springLength': 150
+                }
+            }))
 
-            result = agraph.agraph(nodes=nodes, edges=edges, config=config)
-            print(result)
+            nt.show("/home/coder/leto/data/graph.html")
+            st.components.v1.html(
+                open("/home/coder/leto/data/graph.html").read(), height=500
+            )
 
         return Visualization(
             title="🔗 Entity graph",
