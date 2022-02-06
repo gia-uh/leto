@@ -4,7 +4,6 @@ import math
 from typing import Callable, List
 
 import altair as alt
-import graphviz
 import pandas as pd
 import plotly.express as px
 import pydeck as pdk
