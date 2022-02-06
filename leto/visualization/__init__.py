@@ -104,11 +104,7 @@ class GraphVisualizer(Visualizer):
             nt = Network(height="500px", width="100%")
             nt.from_nx(graph)
             nt.toggle_physics(True)
-            nt.set_options(json.dumps({
-                'barnessHut': {
-                    'springLength': 150
-                }
-            }))
+            nt.set_options(json.dumps({"barnessHut": {"springLength": 150}}))
 
             nt.show("/home/coder/leto/data/graph.html")
             st.components.v1.html(
