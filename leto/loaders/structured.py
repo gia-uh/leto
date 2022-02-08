@@ -33,8 +33,14 @@ class CSVLoader(Loader):
     Load structured data in table format from a CSV file.
     """
 
-    def __init__(self, path: BytesIO, language: Language = Language.en) -> None:
+    def __init__(
+        self,
+        path: BytesIO,
+        main_entity: str = "",
+        language: Language = Language.en,
+    ) -> None:
         self.path = path
+        self.main_entity = main_entity
         self.language = language
 
     @classmethod
@@ -97,7 +103,7 @@ class CSVLoader(Loader):
                 if main_entity_id is not None
                 else str(uuid.uuid4())
             )
-            type = main_entity_id.title() if main_entity_id is not None else "Event"
+            type = main_entity_id.title() if main_entity_id else self.main_entity or "Event"
 
             main = Entity(name=name, type=type, **attributes)
             yield main

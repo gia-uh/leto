@@ -18,6 +18,10 @@ class Entity:
         except:
             return value
 
+    @property
+    def id(self):
+        return f"{self.name}:{self.type}"
+
     def __str__(self) -> str:
         return f"{self.name}:{self.type}"
 

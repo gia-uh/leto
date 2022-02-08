@@ -87,7 +87,7 @@ class GraphVisualizer(Visualizer):
                         label = label[:6] + "..."
 
                     graph.add_node(
-                        e.name,
+                        e.id,
                         shape="circle",
                         label=label,
                         title=f"{e.name} <b>:{e.type}</b>",
@@ -95,8 +95,8 @@ class GraphVisualizer(Visualizer):
                     )
 
                 graph.add_edge(
-                    tuple.entity_from.name,
-                    tuple.entity_to.name,
+                    tuple.entity_from.id,
+                    tuple.entity_to.id,
                     label=tuple.label,
                     arrows="to",
                 )
