@@ -173,9 +173,7 @@ class MapVisualizer(Visualizer):
                 "anchorY": 242,
             }
             icons = pd.DataFrame([dict(name=e.name, **e.attrs) for e in locations])
-            icons["icon_data"] = None
-            for i in icons.index:
-                icons["icon_data"][i] = icon_data
+            icons["icon_data"] = [icon_data] * len(icons)
 
             iconlayer = pdk.Layer(
                 "IconLayer",

@@ -140,7 +140,6 @@ class CSVLoader(Loader):
                     else:
                         continue
 
-                    yield e
                     yield Relation(
                         entity_from=main, entity_to=e, label="mention", field=c
                     )

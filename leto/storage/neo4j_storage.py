@@ -85,8 +85,6 @@ class GraphStorage(Storage):
         if isinstance(entity_or_relation, Entity):
             self.create_entity(entity_or_relation)
         else:
-            self.create_entity(entity_or_relation.entity_from)
-            self.create_entity(entity_or_relation.entity_to)
             self.create_relationship(entity_or_relation)
 
     def create_entity(self, entity: Entity):
