@@ -84,7 +84,6 @@ class GraphStorage(Storage):
     def store(self, entity_or_relation: Union[Entity, Relation]):
         if isinstance(entity_or_relation, Entity):
             self.create_entity(entity_or_relation)
-
         else:
             self.create_entity(entity_or_relation.entity_from)
             self.create_entity(entity_or_relation.entity_to)

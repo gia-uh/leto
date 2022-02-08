@@ -1,3 +1,4 @@
+from random import shuffle
 from typing import List
 import streamlit as st
 from textwrap import dedent
@@ -22,7 +23,7 @@ def bootstrap():
             parser_cls = parsers[st.selectbox("🧙‍♂️ Query parser", list(parsers))]
             parser: QueryParser = parser_cls(storage)
             query_breadth = int(
-                st.number_input("🔮 Query breadth", value=3, min_value=1)
+                st.number_input("🔮 Query breadth", value=2, min_value=1)
             )
 
         with st.expander("🔥 Load new data", True):
@@ -89,12 +90,10 @@ def load_data(storage):
     if st.button("🚀 Run"):
         progress = st.empty()
 
-        for i, relation in enumerate(loader.load(**meta)):
+        for i, entity_or_relation in enumerate(loader.load(**meta)):
             progress.warning(f"⚙️ Loading {i+1} tuples...")
-            try:
-                storage.store(relation)
-            except Exception as e:
-                print(e)
+            print(entity_or_relation, flush=True)
+            storage.store(entity_or_relation)
 
         progress.success(f"🥳 Succesfully loaded {i+1} tuples!")
 

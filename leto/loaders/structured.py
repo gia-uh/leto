@@ -2,6 +2,7 @@ import uuid
 from collections.abc import Mapping
 from io import BytesIO
 from typing import List
+from numpy import isin
 
 import pandas as pd
 from leto.loaders.unstructured import Language
@@ -83,6 +84,11 @@ class CSVLoader(Loader):
         for column in entity_columns:
             for i, tupl in df.iterrows():
                 name = tupl[column]
+
+                if not isinstance(name, str):
+                    continue
+
+                name = name.strip()
                 type = column.title()
 
                 e = Entity(name=name, type=type)
@@ -95,11 +101,11 @@ class CSVLoader(Loader):
         # Create the main entity
         for i, tupl in df.iterrows():
             attributes = {
-                self._strip_column_name(c): getattr(tupl, c) for c in attribute_columns
+                self._strip_column_name(c): getattr(tupl, c) for c in attribute_columns if getattr(tupl, c)
             }
 
             name = (
-                tupl[main_entity_id]
+                tupl[main_entity_id].strip()
                 if main_entity_id is not None
                 else str(uuid.uuid4())
             )
@@ -110,7 +116,11 @@ class CSVLoader(Loader):
 
             # Create all relations
             for column in entity_columns:
-                entity_to = names_to_entities[tupl[column]]
+                entity_to = names_to_entities.get(tupl[column], None)
+
+                if entity_to is None:
+                    continue
+
                 label = f"has_{column.lower()}"
 
                 yield Relation(label=label, entity_from=main, entity_to=entity_to)
@@ -118,7 +128,7 @@ class CSVLoader(Loader):
             # Create all entities mentioned in the text fields
             for c in text_columns:
                 text = tupl[c]
-                entities = [Entity(e.text, e.label_) for e in nlp(text).ents]
+                entities = [Entity(e.text.strip(), e.label_) for e in nlp(text).ents]
 
                 for e in entities:
                     if e.type == "LOC":

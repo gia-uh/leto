@@ -90,7 +90,7 @@ class GraphVisualizer(Visualizer):
                         e.id,
                         shape="circle",
                         label=label,
-                        title=f"{e.name} <b>:{e.type}</b>",
+                        title=f"{e.name}:{e.type}",
                         group=entity_types[e.type],
                     )
 
@@ -127,43 +127,80 @@ class MapVisualizer(Visualizer):
             )
 
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
-        mapeable = []
+        countries = []
+        locations = []
 
         for tuple in response:
             for e in [tuple.entity_from, tuple.entity_to]:
                 if e.name in self.visualizables:
-                    mapeable.append(e)
+                    countries.append(e)
 
-        if not mapeable:
+                if 'lat' in e.attrs and 'lon' in e.attrs:
+                    locations.append(e)
+
+        if not countries + locations:
             return Visualization.Empty()
 
-        regions = set(d.name for d in mapeable)
+        regions = set(d.name for d in countries)
 
         def visualization():
-            data = [
-                feature
+            countries = [
+                dict(name=feature['properties']['name'], **feature)
                 for feature in self.data
                 if feature["properties"]["name"] in regions
             ]
 
             geojson = pdk.Layer(
                 "GeoJsonLayer",
-                data,
+                countries,
                 opacity=0.8,
                 stroked=False,
                 filled=True,
                 extruded=True,
                 wireframe=True,
+                pickable=True,
                 get_elevation=1,
                 get_fill_color=[255, 255, 255],
                 get_line_color=[255, 255, 255],
             )
-            map = pdk.Deck(layers=[geojson])
 
+            icon_data = {
+                # Icon from Wikimedia, used the Creative Commons Attribution-Share Alike 3.0
+                # Unported, 2.5 Generic, 2.0 Generic and 1.0 Generic licenses
+                "url": "https://raw.githubusercontent.com/LETO-ai/resources/main/pin.png",
+                "width": 242,
+                "height": 242,
+                "anchorY": 242,
+            }
+            icons = pd.DataFrame([dict(name=e.name, **e.attrs) for e in locations])
+            icons["icon_data"] = None
+            for i in icons.index:
+                icons["icon_data"][i] = icon_data
+
+            iconlayer = pdk.Layer(
+                "IconLayer",
+                icons,
+                get_icon="icon_data",
+                get_size=40,
+                get_position=['lon', 'lat'],
+                pickable=True,
+            )
+
+            layers = []
+            view_state = None
+
+            if locations:
+                layers.append(iconlayer)
+                view_state = pdk.data_utils.compute_view(icons[["lon", "lat"]], 0.1)
+
+            if countries:
+                layers.append(geojson)
+
+            map = pdk.Deck(layers=layers, initial_view_state=view_state, tooltip={"text": "{name}"})
             st.pydeck_chart(map)
 
         return Visualization(
-            title="🗺️ Map", score=len(mapeable) / len(response), run=visualization
+            title="🗺️ Map", score=len(countries + locations) / len(response), run=visualization
         )
 
 
