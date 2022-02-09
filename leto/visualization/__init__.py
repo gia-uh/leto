@@ -13,15 +13,7 @@ import networkx as nx
 import json
 
 from leto.model import Relation
-from leto.query import (
-    HowManyQuery,
-    MatchQuery,
-    PredictQuery,
-    Query,
-    WhatQuery,
-    WhereQuery,
-    WhoQuery,
-)
+from leto.query import Query
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LinearRegression, LogisticRegression
 
@@ -56,11 +48,7 @@ class Visualizer(abc.ABC):
 class DummyVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
         def visualization():
-            st.code(
-                "\n".join(
-                    str(r) for r in response if r.entity_from.type != "TimeseriesEntry"
-                )
-            )
+            st.code("\n".join(str(r) for r in response))
 
         return Visualization(title="📋 Returned tuples", score=0, run=visualization)
 
@@ -132,10 +120,16 @@ class MapVisualizer(Visualizer):
 
         for tuple in response:
             for e in [tuple.entity_from, tuple.entity_to]:
-                if e.name in self.visualizables:
+                if not (
+                    query.mentions(entity=e.name)
+                    or query.mentions(relation=tuple.label)
+                ):
+                    continue
+
+                if e.name in query.entities and e.name in self.visualizables:
                     countries.append(e)
 
-                if 'lat' in e.attrs and 'lon' in e.attrs:
+                if "lat" in e.attrs and "lon" in e.attrs:
                     locations.append(e)
 
         if not countries + locations:
@@ -145,7 +139,7 @@ class MapVisualizer(Visualizer):
 
         def visualization():
             countries = [
-                dict(name=feature['properties']['name'], **feature)
+                dict(name=feature["properties"]["name"], label="Country", **feature)
                 for feature in self.data
                 if feature["properties"]["name"] in regions
             ]
@@ -172,7 +166,9 @@ class MapVisualizer(Visualizer):
                 "height": 242,
                 "anchorY": 242,
             }
-            icons = pd.DataFrame([dict(name=e.name, **e.attrs) for e in locations])
+            icons = pd.DataFrame(
+                [dict(name=e.name, label=e.type, **e.attrs) for e in locations]
+            )
             icons["icon_data"] = [icon_data] * len(icons)
 
             iconlayer = pdk.Layer(
@@ -180,7 +176,7 @@ class MapVisualizer(Visualizer):
                 icons,
                 get_icon="icon_data",
                 get_size=40,
-                get_position=['lon', 'lat'],
+                get_position=["lon", "lat"],
                 pickable=True,
             )
 
@@ -194,39 +190,82 @@ class MapVisualizer(Visualizer):
             if countries:
                 layers.append(geojson)
 
-            map = pdk.Deck(layers=layers, initial_view_state=view_state, tooltip={"text": "{name}"})
+            map = pdk.Deck(
+                layers=layers,
+                initial_view_state=view_state,
+                tooltip={"text": "{name}:{label}"},
+            )
             st.pydeck_chart(map)
 
         return Visualization(
-            title="🗺️ Map", score=len(countries + locations) / len(response), run=visualization
+            title="🗺️ Map",
+            score=len(countries + locations) / len(response),
+            run=visualization,
+        )
+
+
+class CountEntitiesVisualizer(Visualizer):
+    def visualize(self, query: Query, response: List[Relation]):
+        data = []
+
+        for R in response:
+            if query.mentions(relation=R.label):
+                data.append(
+                    dict(
+                        from_=R.entity_from.name,
+                        to_=R.entity_to.name,
+                        relation=R.label,
+                    )
+                )
+
+        if not data:
+            return Visualization.Empty()
+
+        data = pd.DataFrame(data)
+
+        def visualization():
+            for col in ["from_", "to_", "relation"]:
+                df = set(data[col])
+
+                if len(df) > 1 and len(df) < 20:
+                    st.plotly_chart(px.pie(data, col))
+
+        return Visualization(
+            "🕸️ Entities and Relations", score=len(data) / len(response), run=visualization
         )
 
 
 class CountVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]):
-        if not isinstance(query, HowManyQuery):
-            return Visualization.Empty()
-
-        entities = set(str(e) for e in query.entities)
-        field = str(query.attributes[0])
-        attributes = [str(a) for a in query.attributes[1:]]
-
         data = []
 
         for R in response:
-            if R.label == "is_a" and R.entity_to.name in entities:
-                attrs = {attr: R.entity_from.get(attr) for attr in attributes}
-                value = R.get(field)
-                attrs[field] = R.get(field)
+            if (
+                query.mentions(relation=R.label)
+                or query.mentions(entity=R.entity_from.name)
+                or query.mentions(entity=R.entity_to.name)
+            ):
+                attrs = {
+                    attr: R.get(attr)
+                    or R.entity_from.get(attr)
+                    or R.entity_to.get(attr)
+                    for attr in query.attributes
+                }
 
-                if value is not None:
-                    data.append(dict(name=R.entity_from.name, **attrs))
+                if attrs:
+                    data.append(
+                        dict(
+                            from_=R.entity_from.name,
+                            to_=R.entity_to.name,
+                            relation=R.label,
+                            **attrs,
+                        )
+                    )
 
         if not data:
             return Visualization.Empty()
 
         df = pd.DataFrame(data)
-        df.set_index("name", inplace=True)
 
         for col in df.columns:
             try:
@@ -235,26 +274,25 @@ class CountVisualizer(Visualizer):
                 pass
 
         def visualization():
-            def bars(data: pd.Series, col):
-                pd.set_option("plotting.backend", "plotly")
+            pd.set_option("plotting.backend", "plotly")
+
+            def bars(data: pd.DataFrame, col):
                 st.plotly_chart(data[col].plot.hist())
 
-            def pie(data: pd.Series, col):
+            def pie(data: pd.DataFrame, col):
                 st.plotly_chart(px.pie(df, col))
 
             switch_paint = {"int64": bars, "float64": bars, "object": pie}
 
-            for col in df.columns:
-                switch_paint[str(df.dtypes[col])](df, col)
+            for attr in query.attributes:
+                data = df[df[col].notna()]
+                switch_paint[str(df.dtypes[attr])](data, attr)
 
-        return Visualization(title="📊 Chart", score=len(df), run=visualization)
+        return Visualization(title="📊 Attribute values", score=len(df), run=visualization)
 
 
 class PredictVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]):
-        if not isinstance(query, PredictQuery):
-            return Visualization.Empty()
-
         entities = query.entities
         terms = set(str(a) for a in query.attributes)
 
@@ -392,7 +430,8 @@ def get_visualizers():
         DummyVisualizer(),
         GraphVisualizer(),
         MapVisualizer(),
+        CountEntitiesVisualizer(),
         CountVisualizer(),
-        PredictVisualizer(),
-        TimeseriesVisualizer(),
+        # PredictVisualizer(),
+        # TimeseriesVisualizer(),
     ]

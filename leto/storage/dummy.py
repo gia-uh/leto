@@ -1,4 +1,4 @@
-from leto.query import MatchQuery, Query, QueryResolver, WhatQuery, WhoQuery
+from leto.query import Query, QueryResolver
 from leto.model import Relation
 import pickle
 import pathlib
@@ -40,8 +40,8 @@ class DummyQueryResolver(QueryResolver):
     def __init__(self, storage: DummyStorage) -> None:
         self.storage = storage
 
-    def query_match(self, query: MatchQuery):
-        components = set(query.terms)
+    def resolve(self, query: Query):
+        components = set(query.entities)
 
         for r in self.storage.storage:
             if (
@@ -50,23 +50,3 @@ class DummyQueryResolver(QueryResolver):
                 or r.entity_to.name in components
             ):
                 yield r
-
-    def query_what(self, query: WhatQuery):
-        for r in self.storage.storage:
-            if r.entity_from.name == query.entity and r.label == query.relation:
-                yield r
-
-    def query_who(self, query: WhoQuery):
-        for r in self.storage.storage:
-            if r.entity_to.name == query.entity and r.label == query.relation:
-                yield r
-
-    def resolve(self, query: Query):
-        if isinstance(query, MatchQuery):
-            return self.query_match(query)
-
-        if isinstance(query, WhatQuery):
-            return self.query_what(query)
-
-        if isinstance(query, WhoQuery):
-            return self.query_who(query)

@@ -89,7 +89,7 @@ class CSVLoader(Loader):
                     continue
 
                 name = name.strip()
-                type = column.title()
+                type = self._strip_column_name(column).title()
 
                 e = Entity(name=name, type=type)
                 names_to_entities[name] = e
@@ -121,7 +121,7 @@ class CSVLoader(Loader):
                 if entity_to is None:
                     continue
 
-                label = f"has_{column.lower()}"
+                label = f"has_{self._strip_column_name(column).lower()}"
 
                 yield Relation(label=label, entity_from=main, entity_to=entity_to)
 
@@ -149,6 +149,12 @@ class CSVLoader(Loader):
 
         if name.endswith(":text"):
             return "text"
+
+        if name.endswith(":attr"):
+            return "attribute"
+
+        if name.endswith(":rel"):
+            return "relation"
 
         if name == "date" or name.endswith(":date"):
             return "date"

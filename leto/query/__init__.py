@@ -10,44 +10,18 @@ class Query(abc.ABC):
     entities: List[str]
     relations: List[str]
     attributes: List[str]
-    aggregate: Optional[str] = ""
-    groupby: Optional[str] = ""
 
+    def mentions(self, *, entity:str=None, relation:str=None, attribute:str=None):
+        if entity is not None and entity not in self.entities:
+            return False
 
-@dataclass
-class MatchQuery(Query):
-    pass
+        if relation is not None and relation not in self.relations:
+            return False
 
+        if attribute is not None and attribute not in self.attributes:
+            return False
 
-@dataclass
-class WhatQuery(Query):
-    pass
-
-
-@dataclass
-class WhoQuery(Query):
-    pass
-
-
-@dataclass
-class HowManyQuery(Query):
-    pass
-
-
-@dataclass
-class WhichQuery(Query):
-    pass
-
-
-@dataclass
-class WhereQuery(Query):
-    pass
-
-
-@dataclass
-class PredictQuery(Query):
-    pass
-
+        return True
 
 class QueryResolver(abc.ABC):
     @abc.abstractmethod

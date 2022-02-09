@@ -1,5 +1,7 @@
 import os
 from typing import Iterable, Union
+
+from numpy import rate
 from leto.model import Entity, Relation
 from leto.query import (
     Query,
@@ -84,8 +86,10 @@ class GraphStorage(Storage):
     def store(self, entity_or_relation: Union[Entity, Relation]):
         if isinstance(entity_or_relation, Entity):
             self.create_entity(entity_or_relation)
-        else:
+        elif isinstance(entity_or_relation, Relation):
             self.create_relationship(entity_or_relation)
+        else:
+            raise ValueError(f"{entity_or_relation} is not Entity or Relation")
 
     def create_entity(self, entity: Entity):
         self.entities.add(entity.name)
