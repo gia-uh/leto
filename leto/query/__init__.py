@@ -12,7 +12,14 @@ class Query(abc.ABC):
     relations: List[str]
     attributes: List[str]
 
-    def mentions(self, *, label:str=None, entity:str=None, relation:str=None, attribute:str=None):
+    def mentions(
+        self,
+        *,
+        label: str = None,
+        entity: str = None,
+        relation: str = None,
+        attribute: str = None
+    ):
         if label is not None and label not in self.labels:
             return False
 
@@ -27,12 +34,17 @@ class Query(abc.ABC):
 
         return True
 
+
 class QueryResolver(abc.ABC):
     @abc.abstractmethod
-    def _resolve(self, query: Query, breadth: int, max_entities: int) -> Iterable[Relation]:
+    def _resolve(
+        self, query: Query, breadth: int, max_entities: int
+    ) -> Iterable[Relation]:
         pass
 
-    def resolve(self, query: Query, breadth: int = 1, max_entities: int=-1) -> List[Relation]:
+    def resolve(
+        self, query: Query, breadth: int = 1, max_entities: int = -1
+    ) -> List[Relation]:
         return list(set(self._resolve(query, breadth, max_entities)))
 
 

@@ -133,7 +133,7 @@ class GraphStorage(Storage):
 
         with self.driver.session() as session:
             session.run(
-            f"""
+                f"""
             MATCH (n1:{relation.entity_from.type} {{ name:{repr(relation.entity_from.name)} }}),
                   (n2:{relation.entity_to.type} {{ name:{repr(relation.entity_to.name)} }})
             CREATE (n1)-[r:{relation.label} {{ {attributes_str} }}]->(n2)
@@ -152,7 +152,9 @@ class GraphQueryResolver(QueryResolver):
     def __init__(self, storage: GraphStorage) -> None:
         self.storage = storage
 
-    def _resolve(self, query: Query, breadth: int, max_entities: int) -> Iterable[Relation]:
+    def _resolve(
+        self, query: Query, breadth: int, max_entities: int
+    ) -> Iterable[Relation]:
         if not query.entities:
             return
 

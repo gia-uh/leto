@@ -94,7 +94,9 @@ class GraphVisualizer(Visualizer):
             nt = Network(height="500px", width="100%")
             nt.from_nx(graph)
             nt.toggle_physics(True)
-            nt.set_options(json.dumps({"physics": {"barnesHut": {"springLength": 150}}}))
+            nt.set_options(
+                json.dumps({"physics": {"barnesHut": {"springLength": 150}}})
+            )
 
             nt.show("/home/coder/leto/data/graph.html")
             st.components.v1.html(
@@ -190,7 +192,7 @@ class MapVisualizer(Visualizer):
                 lonlat = []
 
                 for f in countries:
-                    for polygon in f['geometry']['coordinates']:
+                    for polygon in f["geometry"]["coordinates"]:
                         for point in polygon:
                             lonlat.append(dict(lon=point[0], lat=point[1]))
 
@@ -329,7 +331,6 @@ class AttributeVisualizer(Visualizer):
             except Exception:
                 pass
 
-
         def visualization():
             pd.set_option("plotting.backend", "plotly")
 
@@ -450,9 +451,7 @@ class TimeseriesVisualizer(Visualizer):
 
                 entity_field = r.label
                 attribute_field = attr
-                data.append(
-                    {r.label: e2.name, "date": e1.attrs["date"], attr: value}
-                )
+                data.append({r.label: e2.name, "date": e1.attrs["date"], attr: value})
 
         if not data:
             return Visualization.Empty()
@@ -469,11 +468,11 @@ class TimeseriesVisualizer(Visualizer):
                 x="date:T",
                 y=f"{attribute_field}:Q",
                 color=f"{entity_field}",
-                tooltip = [
+                tooltip=[
                     alt.Tooltip(entity_field),
                     alt.Tooltip(attribute_field),
-                    alt.Tooltip("date")
-                ]
+                    alt.Tooltip("date"),
+                ],
             )
 
             st.altair_chart(chart, use_container_width=True)

@@ -19,3 +19,11 @@ $ make image
 ## LICENSE
 
 > To be defined.
+
+
+## TODO
+
+- Tutorial
+- Botón de limpiar base de datos
+- Video
+- Atributos en el tooltip (con cantidad de caracteres ...)

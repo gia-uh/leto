@@ -102,7 +102,9 @@ class CSVLoader(Loader):
             # Create the main entity
             for i, tupl in df.iterrows():
                 attributes = {
-                    self._strip_column_name(c): getattr(tupl, c) for c in attribute_columns if getattr(tupl, c)
+                    self._strip_column_name(c): getattr(tupl, c)
+                    for c in attribute_columns
+                    if getattr(tupl, c)
                 }
 
                 name = (
@@ -110,7 +112,11 @@ class CSVLoader(Loader):
                     if main_entity_id is not None
                     else str(uuid.uuid4())
                 )
-                type = main_entity_id.title() if main_entity_id else self.main_entity or "Event"
+                type = (
+                    main_entity_id.title()
+                    if main_entity_id
+                    else self.main_entity or "Event"
+                )
 
                 main = Entity(name=name, type=type, **attributes)
                 yield main
@@ -129,7 +135,9 @@ class CSVLoader(Loader):
                 # Create all entities mentioned in the text fields
                 for c in text_columns:
                     text = tupl[c]
-                    entities = [Entity(e.text.strip(), e.label_) for e in nlp(text).ents]
+                    entities = [
+                        Entity(e.text.strip(), e.label_) for e in nlp(text).ents
+                    ]
 
                     for e in entities:
                         if e.type == "LOC":
