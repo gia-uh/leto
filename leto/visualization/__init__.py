@@ -3,6 +3,8 @@ import json
 import math
 from typing import Callable, List
 
+import collections
+
 import altair as alt
 import pandas as pd
 import plotly.express as px
@@ -92,7 +94,7 @@ class GraphVisualizer(Visualizer):
             nt = Network(height="500px", width="100%")
             nt.from_nx(graph)
             nt.toggle_physics(True)
-            nt.set_options(json.dumps({"barnessHut": {"springLength": 150}}))
+            nt.set_options(json.dumps({"physics": {"barnesHut": {"springLength": 150}}}))
 
             nt.show("/home/coder/leto/data/graph.html")
             st.components.v1.html(
@@ -183,18 +185,27 @@ class MapVisualizer(Visualizer):
             layers = []
             view_state = None
 
-            if locations:
-                layers.append(iconlayer)
-                view_state = pdk.data_utils.compute_view(icons[["lon", "lat"]], 0.1)
-
             if countries:
                 layers.append(geojson)
+                lonlat = []
+
+                for f in countries:
+                    for polygon in f['geometry']['coordinates']:
+                        for point in polygon:
+                            lonlat.append(dict(lon=point[0], lat=point[1]))
+
+                view_state = pdk.data_utils.compute_view(pd.DataFrame(lonlat), 1.0)
+
+            if locations:
+                layers.append(iconlayer)
+                view_state = pdk.data_utils.compute_view(icons[["lon", "lat"]], 1.0)
 
             map = pdk.Deck(
                 layers=layers,
                 initial_view_state=view_state,
                 tooltip={"text": "{name}:{label}"},
             )
+
             st.pydeck_chart(map)
 
         return Visualization(
@@ -206,36 +217,80 @@ class MapVisualizer(Visualizer):
 
 class CountEntitiesVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]):
-        data = []
+        entities = collections.defaultdict(collections.Counter)
+        relations = []
 
         for R in response:
-            if query.mentions(relation=R.label):
-                data.append(
-                    dict(
-                        from_=R.entity_from.name,
-                        to_=R.entity_to.name,
-                        relation=R.label,
-                    )
-                )
+            for e in [R.entity_from, R.entity_to]:
+                entities[e.type].update([e.name])
 
-        if not data:
+            relations.append(R.label)
+
+        if not entities and not relations:
             return Visualization.Empty()
 
-        data = pd.DataFrame(data)
-
         def visualization():
-            for col in ["from_", "to_", "relation"]:
-                df = set(data[col])
+            for type, instances in entities.items():
+                df = pd.DataFrame([dict(name=e, type=type) for e in instances])
 
                 if len(df) > 1 and len(df) < 20:
-                    st.plotly_chart(px.pie(data, col))
+                    st.write(f"#### {type}")
+                    st.plotly_chart(px.pie(df, "name"))
 
         return Visualization(
-            "🕸️ Entities and Relations", score=len(data) / len(response), run=visualization
+            "🕸️ Entities and Relations",
+            1,
+            run=visualization,
         )
 
 
-class CountVisualizer(Visualizer):
+class SchemaVisualizer(Visualizer):
+    def visualize(self, query: Query, response: List[Relation]):
+        data_entities = []
+        data_relations = []
+        entities = set()
+
+        for R in response:
+            data_relations.append(dict(label=R.label, attribute="label", count=1))
+
+            for key, value in R.attrs.items():
+                data_relations.append(dict(label=R.label, attribute=key, count=1))
+
+            for e in [R.entity_from, R.entity_to]:
+                entities.add(e)
+
+        for e in entities:
+            data_entities.append(dict(type=e.type, attribute="name", count=1))
+
+            for key, value in e.attrs.items():
+                data_entities.append(dict(type=e.type, attribute=key, count=1))
+
+        if not data_entities:
+            return Visualization.Empty()
+
+        data_entities = pd.DataFrame(data_entities)
+        data_entities = data_entities.groupby(["type", "attribute"]).sum().reset_index()
+
+        data_relations = pd.DataFrame(data_relations)
+        data_relations = (
+            data_relations.groupby(["label", "attribute"]).sum().reset_index()
+        )
+
+        def visualization():
+            st.write("#### Entities")
+            st.table(data_entities)
+
+            st.write("#### Relations")
+            st.table(data_relations)
+
+        return Visualization(
+            "⚙️ Schema",
+            score=(len(data_entities) + len(data_relations)) / len(response),
+            run=visualization,
+        )
+
+
+class AttributeVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]):
         data = []
 
@@ -266,12 +321,14 @@ class CountVisualizer(Visualizer):
             return Visualization.Empty()
 
         df = pd.DataFrame(data)
+        print(df, flush=True)
 
         for col in df.columns:
             try:
                 df[col] = pd.to_numeric(df[col])
             except Exception:
                 pass
+
 
         def visualization():
             pd.set_option("plotting.backend", "plotly")
@@ -280,7 +337,8 @@ class CountVisualizer(Visualizer):
                 st.plotly_chart(data[col].plot.hist())
 
             def pie(data: pd.DataFrame, col):
-                st.plotly_chart(px.pie(df, col))
+                if len(data) < 20:
+                    st.plotly_chart(px.pie(df, col))
 
             switch_paint = {"int64": bars, "float64": bars, "object": pie}
 
@@ -288,7 +346,9 @@ class CountVisualizer(Visualizer):
                 data = df[df[col].notna()]
                 switch_paint[str(df.dtypes[attr])](data, attr)
 
-        return Visualization(title="📊 Attribute values", score=len(df), run=visualization)
+        return Visualization(
+            title="📊 Attribute values", score=len(df), run=visualization
+        )
 
 
 class PredictVisualizer(Visualizer):
@@ -370,20 +430,20 @@ class TimeseriesVisualizer(Visualizer):
         entity_field = None
         attribute_field = None
 
+        attributes = set(query.attributes) - set(["date"])
+
         for r in response:
-            e = r.entity_from
-
-            if e.type != "TimeseriesEntry":
+            if not query.mentions(relation=r.label):
                 continue
 
-            if r.entity_to.type == "Source":
+            e1 = r.entity_from
+            e2 = r.entity_to
+
+            if not "date" in e1.attrs:
                 continue
 
-            if not "date" in e.attrs:
-                continue
-
-            for attr in query.attributes:
-                value = e.attrs.get(attr)
+            for attr in attributes:
+                value = e1.attrs.get(attr)
 
                 if not value:
                     continue
@@ -391,7 +451,7 @@ class TimeseriesVisualizer(Visualizer):
                 entity_field = r.label
                 attribute_field = attr
                 data.append(
-                    {r.label: r.entity_to.name, "date": e.attrs["date"], attr: value}
+                    {r.label: e2.name, "date": e1.attrs["date"], attr: value}
                 )
 
         if not data:
@@ -400,24 +460,20 @@ class TimeseriesVisualizer(Visualizer):
         df = pd.DataFrame(data)
         df["date"] = pd.to_datetime(df["date"])
 
-        if query.groupby:
-            df = df.groupby(
-                [entity_field, pd.Grouper(key="date", freq=query.groupby[0].upper())]
-            )
-            df = getattr(df, query.aggregate)().reset_index()
+        print(df, flush=True)
 
         def visualization():
             chart = alt.Chart(df)
-
-            if query.groupby:
-                chart = chart.mark_bar()
-            else:
-                chart = chart.mark_line()
-
+            chart = chart.mark_line()
             chart = chart.encode(
                 x="date:T",
                 y=f"{attribute_field}:Q",
                 color=f"{entity_field}",
+                tooltip = [
+                    alt.Tooltip(entity_field),
+                    alt.Tooltip(attribute_field),
+                    alt.Tooltip("date")
+                ]
             )
 
             st.altair_chart(chart, use_container_width=True)
@@ -430,8 +486,9 @@ def get_visualizers():
         DummyVisualizer(),
         GraphVisualizer(),
         MapVisualizer(),
+        SchemaVisualizer(),
         CountEntitiesVisualizer(),
-        CountVisualizer(),
+        AttributeVisualizer(),
+        TimeseriesVisualizer(),
         # PredictVisualizer(),
-        # TimeseriesVisualizer(),
     ]

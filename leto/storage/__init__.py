@@ -27,6 +27,10 @@ class Storage(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def get_entity_types(self) -> List[str]:
+        pass
+
+    @abc.abstractmethod
     def get_query_resolver(self) -> QueryResolver:
         pass
 

@@ -44,6 +44,7 @@ class GraphStorage(Storage):
     def __init__(self):
         self.driver = get_neo4j_driver()
         self.entities = set(self.get_entity_names())
+        self.entity_types = set(self.get_entity_types())
         self.relationships = set(self.get_relationship_types())
         self.attributes = set(self.get_attribute_types())
 
@@ -56,6 +57,15 @@ class GraphStorage(Storage):
 
             for record in session.run("CALL db.relationshipTypes()"):
                 results.append(record["relationshipType"])
+
+            return results
+
+    def get_entity_types(self):
+        with self.driver.session() as session:
+            results = []
+
+            for record in session.run("CALL db.labels()"):
+                results.append(record["label"])
 
             return results
 
@@ -93,6 +103,7 @@ class GraphStorage(Storage):
 
     def create_entity(self, entity: Entity):
         self.entities.add(entity.name)
+        self.entity_types.add(entity.type)
 
         for attr in entity.attrs:
             self.attributes.add(attr)
@@ -133,9 +144,6 @@ class GraphStorage(Storage):
         return GraphQueryResolver(self)
 
 
-MAX_ENTITIES: int = 1000
-
-
 class GraphQueryResolver(QueryResolver):
     """
     A query resolver attached to a Neo4j backend.
@@ -144,7 +152,7 @@ class GraphQueryResolver(QueryResolver):
     def __init__(self, storage: GraphStorage) -> None:
         self.storage = storage
 
-    def _resolve(self, query: Query, breadth: int) -> Iterable[Relation]:
+    def _resolve(self, query: Query, breadth: int, max_entities: int) -> Iterable[Relation]:
         if not query.entities:
             return
 
@@ -154,7 +162,7 @@ class GraphQueryResolver(QueryResolver):
         MATCH p=(n1)-[*..{breadth}]-(n2)
         WHERE ({where_entity}) AND none(r IN relationships(p) WHERE type(r) = "has_source")
         RETURN nodes(p) as nodes, relationships(p) as edges
-        LIMIT {MAX_ENTITIES}
+        LIMIT {max_entities}
         """
 
         with self.storage.driver.session() as session:

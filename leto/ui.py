@@ -25,6 +25,9 @@ def bootstrap():
             query_breadth = int(
                 st.number_input("🔮 Query breadth", value=2, min_value=1)
             )
+            max_entities = int(
+                st.number_input("🔮 Max entities", value=100, min_value=1)
+            )
 
         with st.expander("🔥 Load new data", True):
             load_data(storage)
@@ -52,7 +55,7 @@ def bootstrap():
             st.write("#### 💡 Interpreting query as:")
             st.code(query)
 
-            response = resolver.resolve(query, query_breadth)
+            response = resolver.resolve(query, query_breadth, max_entities)
 
             if not response:
                 st.error("😨 No data was found to answer that query!")
@@ -105,13 +108,11 @@ def example_queries():
         st.session_state.query_input = q
 
     for q in [
-        "What is a symptom of coronavirus",
-        "daily covid cases in Spain",
-        "Spain and Cuba, cumulative covid cases",
-        "Spain and Cuba, daily covid cases, monthly mean",
+        "alicante",
+        "alicante mention rating",
+        "benidorm unemployment by date",
+        "Cuba daily covid cases by date and country",
         "tourists in Spain",
-        "tourists in Spain monthly sum",
-        "tourists in Spain yearly sum",
     ]:
         st.button(f"❔ {q}", on_click=set_example_query, args=(q,))
 
