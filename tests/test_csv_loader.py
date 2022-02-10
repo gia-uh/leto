@@ -9,7 +9,7 @@ datapath = Path(__file__).parent / "data"
 
 
 def test_load_single_entities():
-    loader = CSVLoader(path=datapath / "single_entities.csv")
+    loader = CSVLoader(paths=[datapath / "single_entities.csv"])
     tuples = list(loader.load())
 
     assert len(tuples) == 6
@@ -30,7 +30,7 @@ def test_load_single_entities():
 
 
 def test_load_two_entities():
-    loader = CSVLoader(path=datapath / "two_entities.csv")
+    loader = CSVLoader(paths=[datapath / "two_entities.csv"])
     tuples = list(loader.load())
 
     assert len(tuples) == 15
@@ -43,13 +43,13 @@ def test_load_two_entities():
     assert tuples[3].type == "Person"
 
     assert isinstance(tuples[4], Relation)
-    assert tuples[4].label == "has_profession"
+    assert tuples[4].label == "profession"
     assert tuples[4].entity_from.name == "Tony Stark"
     assert tuples[4].entity_to.name == "inventor"
 
 
 def test_load_three_entities():
-    loader = CSVLoader(path=datapath / "three_entities.csv")
+    loader = CSVLoader(paths=[datapath / "three_entities.csv"])
     tuples = list(loader.load())
 
     assert len(tuples) == 24
@@ -66,18 +66,18 @@ def test_load_three_entities():
     assert tuples[6].type == "Person"
 
     assert isinstance(tuples[7], Relation)
-    assert tuples[7].label == "has_profession"
+    assert tuples[7].label == "profession"
     assert tuples[7].entity_from.name == "Tony Stark"
     assert tuples[7].entity_to.name == "inventor"
 
     assert isinstance(tuples[8], Relation)
-    assert tuples[8].label == "has_team"
+    assert tuples[8].label == "team"
     assert tuples[8].entity_from.name == "Tony Stark"
     assert tuples[8].entity_to.name == "Avengers"
 
 
 def test_implicit_entities():
-    loader = CSVLoader(path=datapath / "implicit_entities.csv")
+    loader = CSVLoader(paths=[datapath / "implicit_entities.csv"])
     tuples = list(loader.load())
 
     assert len(tuples) == 26
@@ -88,12 +88,12 @@ def test_implicit_entities():
     assert tuples[6].missions == 15
 
     assert isinstance(tuples[7], Relation)
-    assert tuples[7].label == "has_team"
+    assert tuples[7].label == "team"
     assert tuples[7].entity_to.name == "Avengers"
 
 
 def test_date():
-    loader = CSVLoader(path=datapath / "date.csv")
+    loader = CSVLoader(paths=[datapath / "date.csv"])
     tuples = list(loader.load())
 
     assert len(tuples) == 13
@@ -105,11 +105,11 @@ def test_date():
 
     assert isinstance(tuples[4], Relation)
     assert tuples[4].entity_to.name == "Spain"
-    assert tuples[4].label == "has_country"
+    assert tuples[4].label == "country"
 
 
 def test_entity_name():
-    loader = CSVLoader(main_entity="DeathReport", path=datapath / "date.csv")
+    loader = CSVLoader(main_entity="DeathReport", paths=[datapath / "date.csv"])
     tuples = list(loader.load())
 
     assert len(tuples) == 13
@@ -121,16 +121,16 @@ def test_entity_name():
 
     assert isinstance(tuples[4], Relation)
     assert tuples[4].entity_to.name == "Spain"
-    assert tuples[4].label == "has_country"
+    assert tuples[4].label == "country"
 
 
-def test_date():
-    loader = CSVLoader(path=datapath / "entity_with_text.csv")
+def test_text():
+    loader = CSVLoader(paths=[datapath / "entity_with_text.csv"])
     tuples = list(loader.load())
 
-    assert len(tuples) == 10
+    assert len(tuples) == 8
 
-    assert isinstance(tuples[2], Relation)
-    assert tuples[2].label == "mention"
-    assert tuples[2].entity_from.name == "John Doe"
-    assert tuples[2].entity_to.name == "Microsoft Ltd."
+    assert isinstance(tuples[1], Relation)
+    assert tuples[1].label == "mention"
+    assert tuples[1].entity_from.name == "John Doe"
+    assert tuples[1].entity_to.name == "Microsoft Ltd."
