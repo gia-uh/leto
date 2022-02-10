@@ -5,7 +5,7 @@ image:
 	docker-compose -f docker/docker-compose.yml build
 
 shell:
-	docker-compose -f docker/docker-compose.yml run leto bash
+	docker exec -it leto bash
 
 pull:
 	docker pull letoai/leto:latest
@@ -17,7 +17,7 @@ pull-safe:
 	docker tag docker.uclv.cu/neo4j:latest neo4j/neo4j:latest
 
 clean-neo4j:
-	sudo rm -rf data/neo4j && docker-compose -f docker/docker-compose.yml restart neo4j
+	sudo rm -rf data/neo4j* && docker-compose -f docker/docker-compose.yml restart neo4j
 
 test:
 	docker-compose -f docker/docker-compose.yml run leto pytest -v tests

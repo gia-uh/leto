@@ -40,8 +40,13 @@ services:
       - 7687:7687
     volumes:
       - "../data/neo4j:/var/lib/neo4j/data"
+      - "../data/neo4j-plugins:/var/lib/neo4j/plugins"
     environment:
       - NEO4J_AUTH=neo4j/letoai
+      # - NEO4J_apoc_export_file_enabled=true
+      # - NEO4J_apoc_import_file_enabled=true
+      # - NEO4J_apoc_import_file_use__neo4j__config=true
+      # - NEO4JLABS_PLUGINS=["apoc"]
 
 volumes:
   vscode-leto:

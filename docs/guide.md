@@ -76,7 +76,7 @@ These are premade questions that illustrate the types of queries that can be pos
 ## Interacting with the backend
 
 If you want to interact with the backend data, at <http://localhost:7474> you will find neo4j's browser interface.
-To connect just enter the username `neo4j` and the password `12345678`.
+To connect just enter the username `neo4j` and the password `letoai`.
 
 Neo4j is a graph database that powers all of LETO's queries. Refer to the [official documentation](https://neo4j.com/docs/) for more information on how to use its interface directly.
 
