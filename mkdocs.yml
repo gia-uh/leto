@@ -1,9 +1,10 @@
 site_name: "LETO MVP"
 site_url: https://leto-ai.github.io
-repo_url: https://github.com/LETO-ai/leto-ai.github.io
+repo_url: https://github.com/LETO-ai/leto-mvp
 edit_uri: ""
 
 remote_branch: main
+remote_name: docs
 
 theme:
   name: material

@@ -9,7 +9,7 @@ shell:
 
 .PHONY: docs
 docs:
-	docker exec -it leto-docs mkdocs gh-deploy
+	docker exec -it leto-docs bash
 
 pull:
 	docker pull letoai/leto:latest
