@@ -7,6 +7,10 @@ image:
 shell:
 	docker exec -it leto bash
 
+.PHONY: docs
+docs:
+	docker exec -it leto-docs mkdocs gh-deploy
+
 pull:
 	docker pull letoai/leto:latest
 

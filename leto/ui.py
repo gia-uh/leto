@@ -44,7 +44,7 @@ def bootstrap():
     with side:
         st.markdown("### ❓ Example queries")
         st.info(
-            "If you have loaded the example data, you can try some of these queries to see an example of LETO's functionality."
+            "Follow the tutorial at https://leto-ai.github.io to load the data necessary to run the following queries."
         )
         example_queries()
 
