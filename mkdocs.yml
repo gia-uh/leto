@@ -53,5 +53,6 @@ markdown_extensions:
 
 nav:
   - 🏠 Home: index.md
+  - ❓ Tutorial: tutorial.md
   - 📝 User Guide: guide.md
   - 🛠️ Development Guide: dev.md

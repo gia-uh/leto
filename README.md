@@ -19,9 +19,3 @@ $ make image
 ## LICENSE
 
 > To be defined.
-
-
-## TODO
-
-- Tutorial
-- Video
