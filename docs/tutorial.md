@@ -110,3 +110,39 @@ Now type `spain tourists by country` and you should see a timeseries graph like 
 ![](./img/tutorial-11.png)
 
 The magic here happens because there's a `date` attribute on the `TourismInfo` node, and it's associated via a `country` relation with the entities you mention. By understanding how LETO interprets a query, we can tinker with the input to achieve more or less what we want.
+
+## Loading a large data set
+
+Let's now load the file `employment_alicante.csv` [located here](./data/employment_alicante.csv), which also contains time-indexed information about unemployment in a sample of municipalities inside Alicante. Make sure to set the `main_entity` to `UnemploymentInfo`. The file looks something like this:
+
+```ts
+municipality:rel,province:rel,country:rel,age:attr,gender:rel,unemployment,date
+Altea,Alicante,Spain,<25,Masculino,34.0,06/01/01
+Altea,Alicante,Spain,25-44,Masculino,123.0,06/01/01
+Altea,Alicante,Spain,>=45,Masculino,0.0,06/01/01
+Altea,Alicante,Spain,<25,Femenino,87.0,06/01/01
+Altea,Alicante,Spain,25-44,Femenino,41.0,06/01/01
+Altea,Alicante,Spain,>=45,Femenino,257.0,06/01/01
+Benidorm,Alicante,Spain,<25,Masculino,211.0,06/01/01
+Benidorm,Alicante,Spain,25-44,Masculino,763.0,06/01/01
+Benidorm,Alicante,Spain,>=45,Masculino,0.0,06/01/01
+Benidorm,Alicante,Spain,<25,Femenino,479.0,06/01/01
+Benidorm,Alicante,Spain,25-44,Femenino,172.0,06/01/01
+Benidorm,Alicante,Spain,>=45,Femenino,1033.0,06/01/01
+```
+
+As you can see, there are several `:rel` annotations which indicate LETO that we want those columns to become explicit relations with an entity rather than simple attributes. Go ahead and load the data if you haven't. This is a bigger file which can take a couple minutes to fully digest.
+
+Once loaded you'll see a bunch of new facts (around ~11K) have appeared in the `⚙️ Config` panel. If you just type `alicante` in the query box you'll get a graph like the following:
+
+![](./img/tutorial-12.png)
+
+Having this much data creates a couple of problems we'll have to deal with. First, if you just type `alicante` you'll never recover the comments, for example, because there's so much unemployment info that any subsample of the graph around `Alicante` is unlikely to have anything else.
+
+To deal with this issue, you can type `alicante ~unemploymentinfo` to create a *negative filter* that will ignore all `UnemploymentInfo` nodes and give you back the old graph.
+
+The second issue has to do with the size of the subgraph recovered. If you type `alicante unemployment by municipality ~location` you'll see that it selects some of the relevant data:
+
+![](./img/tutorial-13.png)
+
+However, since LETO returns a subset of the graph, not necessarily all the data available will be included in the graph. To fix this, you can enter a larger number for the `🔮 Max results` field in the `⚙️ Config` panel. Enter `500` to see how the whole of the data looks like.

@@ -1,4 +1,5 @@
 import os
+from textwrap import dedent
 from typing import Iterable, Union
 
 from numpy import rate
@@ -166,14 +167,28 @@ class GraphQueryResolver(QueryResolver):
         if not query.entities:
             return
 
-        where_entity = " OR ".join(f'n1.name = "{e}"' for e in query.entities)
+        ignored_relations = ['has_source']
 
-        cypher = f"""
+        entity_filters = " OR ".join(f'n1.name = "{e}"' for e in query.entities)
+        ignored_labels = " AND ".join(f"none(e IN nodes(p) WHERE e:{label})" for label in query.ignored_labels)
+        ignored_relations = " AND ".join(f'none(r IN relationships(p) WHERE type(r) = "{label}")' for label in ignored_relations)
+
+        filters = f"({entity_filters})"
+
+        if ignored_relations:
+            filters += f" AND ({ignored_relations})"
+
+        if ignored_labels:
+            filters += f" AND ({ignored_labels})"
+
+        cypher = dedent(f"""
         MATCH p=(n1)-[*..{breadth}]-(n2)
-        WHERE ({where_entity}) AND none(r IN relationships(p) WHERE type(r) = "has_source")
+        WHERE {filters}
         RETURN nodes(p) as nodes, relationships(p) as edges
         LIMIT {max_entities}
-        """
+        """)
+
+        print(cypher, flush=True)
 
         with self.storage.driver.session() as session:
             for edges in session.read_transaction(self._run_query, cypher):

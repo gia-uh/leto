@@ -11,6 +11,7 @@ class Query(abc.ABC):
     entities: List[str]
     relations: List[str]
     attributes: List[str]
+    ignored_labels: List[str] = None
 
     def mentions(
         self,
@@ -60,6 +61,6 @@ class QueryParser(abc.ABC):
 
 
 def get_parsers():
-    from leto.query.rules import SpanishRuleParser, EnglishRuleParser
+    from leto.query.rules import RuleBasedQueryParser
 
-    return [EnglishRuleParser, SpanishRuleParser]
+    return [RuleBasedQueryParser]

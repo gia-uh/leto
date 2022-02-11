@@ -12,20 +12,9 @@ class RuleBasedQueryParser(QueryParser):
     AGG_KEYWORDS = ["mean", "sum"]
     GROUP_KEYWORDS = ["yearly", "monthly"]
 
-    @abstractmethod
-    def _get_model(self) -> Language:
-        pass
-
-    def _make_entity(self, e):
-        words = [tok for tok in e]
-
-        while words[0].pos_ == "DET":
-            words.pop(0)
-
-        return e[: -len(words)]
-
     def _match(self, query: str, candidates: List[str]):
         matches = []
+        patterns = []
 
         for candidate in candidates:
             error = max(1, min(5, int(0.2 * len(candidate))))
@@ -35,8 +24,11 @@ class RuleBasedQueryParser(QueryParser):
                 best_match = regex.search(re, query)
 
                 if best_match is not None:
-                    matches.append(candidate)
                     span = best_match.span()
+                    pattern = query[span[0] : span[1]].strip()
+
+                    matches.append(candidate)
+                    patterns.append(pattern)
                     query = query[: span[0]] + query[span[1] :]
 
                     if not query.startswith(" "):
@@ -48,7 +40,7 @@ class RuleBasedQueryParser(QueryParser):
             except regex.error:
                 pass
 
-        return query, matches
+        return query, matches, patterns
 
     def parse(self, query: str) -> Query:
         query = " " + " ".join(query.lower().split()) + " "
@@ -58,19 +50,18 @@ class RuleBasedQueryParser(QueryParser):
         all_relations = self.storage.get_relationship_types()
         all_attributes = self.storage.get_attribute_types()
 
-        _, labels = self._match(query, all_labels)
-        query, entities = self._match(query, all_entities)
-        query, relations = self._match(query, all_relations)
-        query, attributes = self._match(query, all_attributes)
+        query, labels, patterns = self._match(query, all_labels)
+        query, entities, _ = self._match(query, all_entities)
+        query, relations, _ = self._match(query, all_relations)
+        query, attributes, _ = self._match(query, all_attributes)
 
-        return Query(labels, entities, relations, attributes)
+        true_labels = []
+        ignored_labels = []
 
+        for label, pattern in zip(labels, patterns):
+            if pattern.startswith("~"):
+                ignored_labels.append(label)
+            else:
+                true_labels.append(label)
 
-class SpanishRuleParser(RuleBasedQueryParser):
-    def _get_model(self):
-        return get_model("es_core_news_sm")
-
-
-class EnglishRuleParser(RuleBasedQueryParser):
-    def _get_model(self):
-        return get_model("en_core_web_sm")
+        return Query(true_labels, entities, relations, attributes, ignored_labels)

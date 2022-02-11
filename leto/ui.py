@@ -1,6 +1,6 @@
 from random import shuffle
 from typing import List
-from leto.query.rules import EnglishRuleParser
+from leto.query.rules import RuleBasedQueryParser
 import streamlit as st
 from textwrap import dedent
 
@@ -21,7 +21,7 @@ def bootstrap():
             storage: Storage = _build_cls(storage_cls)
             storage_size = st.empty()
             storage_size.metric(f"No. of facts", storage.size)
-            parser: QueryParser = EnglishRuleParser(storage)
+            parser: QueryParser = RuleBasedQueryParser(storage)
             query_breadth = int(
                 st.number_input("🔮 Query breadth", value=2, min_value=1)
             )
@@ -123,6 +123,8 @@ def example_queries():
         "alicante ratings by location",
         "alicante ratings and likes by location",
         "spain tourists by country",
+        "alicante ~unemploymentinfo",
+        "alicante unemployment by municipality ~location"
     ]:
         st.button(f"❔ {q}", on_click=set_example_query, args=(q,))
 

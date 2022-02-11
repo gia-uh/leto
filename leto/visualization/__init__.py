@@ -68,6 +68,9 @@ class GraphVisualizer(Visualizer):
             graph = nx.DiGraph()
             entity_types = {}
 
+            if len(response) > 100:
+                return Visualization.Empty()
+
             entities = set(query.entities)
             main_entities = set()
 
@@ -449,11 +452,11 @@ class TimeseriesVisualizer(Visualizer):
         attributes = set(query.attributes) - set(["date"])
 
         for r in response:
-            if not query.mentions(relation=r.label):
-                continue
-
             e1 = r.entity_from
             e2 = r.entity_to
+
+            if e2.type not in query.labels:
+                continue
 
             if not "date" in e1.attrs:
                 continue
@@ -481,7 +484,7 @@ class TimeseriesVisualizer(Visualizer):
             chart = chart.mark_line()
             chart = chart.encode(
                 x="date:T",
-                y=f"{attribute_field}:Q",
+                y=alt.Y(f"sum({attribute_field}):Q", title=attribute_field),
                 color=f"{entity_field}",
                 tooltip=[
                     alt.Tooltip(entity_field),
