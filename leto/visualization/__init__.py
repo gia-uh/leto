@@ -64,17 +64,12 @@ def shorten(string, length, dots="..."):
 
 class GraphVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]) -> Visualization:
+        if len(response) > 100:
+            return Visualization.Empty()
+
         def visualization():
             graph = nx.DiGraph()
             entity_types = {}
-
-            if len(response) > 100:
-                return Visualization.Empty()
-
-            entities = set(query.entities)
-            main_entities = set()
-
-            skip_types = frozenset(["Source", "Event"])
 
             for tuple in response:
                 for e in [tuple.entity_from, tuple.entity_to]:
