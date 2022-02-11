@@ -33,6 +33,11 @@ class Loader(abc.ABC):
             **metadata,
         )
 
+        if not entities:
+            return
+
+        yield metadata
+
         for entity in entities:
             yield Relation("has_source", entity, metadata)
 

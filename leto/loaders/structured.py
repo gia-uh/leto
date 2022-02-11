@@ -31,7 +31,7 @@ class FrozenDict(Mapping):
 
 class CSVLoader(Loader):
     """
-    Load structured data in table format from a CSV file.
+    Load structured data in table format from one or more CSV files.
     """
 
     def __init__(
@@ -46,7 +46,7 @@ class CSVLoader(Loader):
 
     @classmethod
     def title(cls):
-        return "From CSV file"
+        return "From CSV files"
 
     def _get_source(self, name, **metadata) -> Source:
         return Source(name, method="csv", loader="CSVLoader", **metadata)

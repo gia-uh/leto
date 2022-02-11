@@ -78,7 +78,7 @@ class GraphVisualizer(Visualizer):
                     if e.type not in entity_types:
                         entity_types[e.type] = len(entity_types)
 
-                    generated = (e.get('_generated') == "true")
+                    generated = e.get("_generated") == "true"
                     label = e.type if generated else e.name
                     full_label = e.type if generated else f"{e.name} : {e.type}"
 
@@ -316,28 +316,33 @@ class AttributeVisualizer(Visualizer):
     def visualize(self, query: Query, response: List[Relation]):
         data = []
 
-        for R in response:
-            if (
-                query.mentions(relation=R.label)
-                or query.mentions(entity=R.entity_from.name)
-                or query.mentions(entity=R.entity_to.name)
-            ):
-                attrs = {
-                    attr: R.get(attr)
-                    or R.entity_from.get(attr)
-                    or R.entity_to.get(attr)
-                    for attr in query.attributes
-                }
+        if len(query.attributes) < 1 or len(query.labels) != 1:
+            return Visualization.Empty()
 
-                if attrs:
-                    data.append(
-                        dict(
-                            from_=R.entity_from.name,
-                            to_=R.entity_to.name,
-                            relation=R.label,
-                            **attrs,
-                        )
-                    )
+        attributes = query.attributes[0]
+        label = query.labels[0]
+
+        for R in response:
+            entity = None
+
+            if R.entity_from.type == label:
+                entity = R.entity_from
+            if R.entity_to.type == label:
+                entity = R.entity_to
+
+            values = {}
+            for attribute in query.attributes:
+                values[attribute] = R.entity_from.get(attribute) or R.entity_to.get(
+                    attribute
+                )
+
+            if not values or entity is None:
+                continue
+
+            row = {label: entity.name}
+            row.update(**values)
+
+            data.append(row)
 
         if not data:
             return Visualization.Empty()
@@ -352,20 +357,10 @@ class AttributeVisualizer(Visualizer):
                 pass
 
         def visualization():
-            pd.set_option("plotting.backend", "plotly")
-
-            def bars(data: pd.DataFrame, col):
-                st.plotly_chart(data[col].plot.hist())
-
-            def pie(data: pd.DataFrame, col):
-                if len(data) < 20:
-                    st.plotly_chart(px.pie(df, col))
-
-            switch_paint = {"int64": bars, "float64": bars, "object": pie}
-
             for attr in query.attributes:
-                data = df[df[col].notna()]
-                switch_paint[str(df.dtypes[attr])](data, attr)
+                chart = alt.Chart(df).mark_point().encode(y=label, x=attr)
+
+                st.altair_chart(chart)
 
         return Visualization(
             title="📊 Attribute values", score=len(df), run=visualization

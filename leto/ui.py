@@ -26,7 +26,7 @@ def bootstrap():
                 st.number_input("🔮 Query breadth", value=2, min_value=1)
             )
             max_entities = int(
-                st.number_input("🔮 Max entities", value=100, min_value=1)
+                st.number_input("🔮 Max results", value=100, min_value=1)
             )
 
             if st.button("💣 Clear database"):
@@ -44,7 +44,7 @@ def bootstrap():
     with side:
         st.markdown("### ❓ Example queries")
         st.info(
-            "Follow the tutorial at https://leto-ai.github.io to load the data necessary to run the following queries."
+            "Follow the tutorial at https://leto-ai.github.io/tutorial to load the data necessary to run the following queries."
         )
         example_queries()
 
@@ -96,13 +96,18 @@ def load_data(storage, widget):
 
     if st.button("🚀 Run"):
         progress = st.empty()
+        i = -1
 
         for i, entity_or_relation in enumerate(loader.load(**meta)):
-            progress.warning(f"⚙️ Loading {i+1} tuples...")
+            progress.warning(f"⚙️ Loading {i+1} facts...")
             print(entity_or_relation, flush=True)
             storage.store(entity_or_relation)
 
-        progress.success(f"🥳 Succesfully loaded {i+1} tuples!")
+        if i >= 0:
+            progress.success(f"🥳 Succesfully loaded {i+1} facts!")
+        else:
+            progress.warning(f"⚠️ No facts where found!")
+
         widget.metric(f"No. of facts", storage.size)
 
 
@@ -114,10 +119,10 @@ def example_queries():
 
     for q in [
         "alicante",
-        "alicante mention rating",
-        "benidorm unemployment by date",
-        "Cuba daily covid cases by date and country",
-        "tourists in Spain",
+        "alicante mentions",
+        "alicante ratings by location",
+        "alicante ratings and likes by location",
+        "spain tourists by country",
     ]:
         st.button(f"❔ {q}", on_click=set_example_query, args=(q,))
 

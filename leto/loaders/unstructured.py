@@ -30,18 +30,22 @@ class SVOFromText(Loader):
     def _get_source(self, name, **metadata) -> Source:
         return Source(name, method="text", loader="SVOFromText", **metadata)
 
+    def _sentences(self):
+        yield self.text
+
     def _load(self):
         nlp = get_model(self.language)
 
-        for subj, verb, obj in get_svo_tripplets(nlp, self.text):
-            yield Relation(
-                label="_".join(s.lemma_ for s in verb),
-                entity_from=Entity("_".join(s.text for s in subj), "Thing"),
-                entity_to=Entity("_".join(s.text for s in obj), "Thing"),
-            )
+        for sentence in self._sentences():
+            for subj, verb, obj in get_svo_tripplets(nlp, sentence):
+                yield Relation(
+                    label="_".join(s.lemma_ for s in verb),
+                    entity_from=Entity("_".join(s.text for s in subj), "Thing"),
+                    entity_to=Entity("_".join(s.text for s in obj), "Thing"),
+                )
 
 
-class SVOFromFile(Loader):
+class SVOFromFile(SVOFromText):
     """
     Load subject-verb-object triplets from natural language in a text file.
     """
@@ -57,16 +61,10 @@ class SVOFromFile(Loader):
     def _get_source(self, name, **metadata) -> Source:
         return Source(name, method="text", loader="SVOFromFile", **metadata)
 
-    def _load(self):
-        nlp = get_model(self.language)
-
-        for line in self.file.readlines():
-            for subj, verb, obj in get_svo_tripplets(nlp, line.decode("utf8")):
-                yield Relation(
-                    label="_".join(s.lemma_ for s in verb),
-                    entity_from=Entity("_".join(s.text for s in subj), "Thing"),
-                    entity_to=Entity("_".join(s.text for s in obj), "Thing"),
-                )
+    def _sentences(self):
+        with open(self.file) as fp:
+            for line in fp:
+                yield line
 
 
 def get_svo_tripplets(nlp: spacy.Language, text: str):
