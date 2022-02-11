@@ -476,6 +476,7 @@ class TimeseriesVisualizer(Visualizer):
 
         df = pd.DataFrame(data)
         df["date"] = pd.to_datetime(df["date"])
+        df = df.groupby([entity_field, "date"]).sum().reset_index()
 
         print(df, flush=True)
 
@@ -484,8 +485,8 @@ class TimeseriesVisualizer(Visualizer):
             chart = chart.mark_line()
             chart = chart.encode(
                 x="date:T",
-                y=alt.Y(f"sum({attribute_field}):Q", title=attribute_field),
-                color=f"{entity_field}",
+                y=attribute_field,
+                color=entity_field,
                 tooltip=[
                     alt.Tooltip(entity_field),
                     alt.Tooltip(attribute_field),

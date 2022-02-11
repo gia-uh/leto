@@ -145,4 +145,4 @@ The second issue has to do with the size of the subgraph recovered. If you type 
 
 ![](./img/tutorial-13.png)
 
-However, since LETO returns a subset of the graph, not necessarily all the data available will be included in the graph. To fix this, you can enter a larger number for the `🔮 Max results` field in the `⚙️ Config` panel. Enter `500` to see how the whole of the data looks like.
+However, since LETO returns a subset of the graph, not necessarily all the data available will be included in the graph. To fix this, you can enter a larger number for the `🔮 Max results` field in the `⚙️ Config` panel. Enter `10000` to see how the whole of the data looks like. The caveat is that with such a big graph, LETO will not show the graph representation.
