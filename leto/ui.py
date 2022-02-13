@@ -100,7 +100,7 @@ def load_data(storage, widget):
 
         for i, entity_or_relation in enumerate(loader.load(**meta)):
             progress.warning(f"⚙️ Loading {i+1} facts...")
-            print(entity_or_relation, flush=True)
+            # print(entity_or_relation, flush=True)
             storage.store(entity_or_relation)
 
         if i >= 0:
