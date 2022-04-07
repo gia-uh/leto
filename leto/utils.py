@@ -66,16 +66,18 @@ def get_model(name: str = "en_core_web_sm") -> spacy.Language:
     Returns:
         spacy.Language: Language
     """
-    try:
-        print("model loading", end="", flush=True)
-        model = get_local_model(name)
-        if not model:
-            print("model not found locally at: ", data_directory)
-            model = get_online_model(name)
-        print(" done")
-        return model
-    except Exception as e:
-        raise e
+    return spacy.load(name)
+
+    # try:
+    #     print("model loading", end="", flush=True)
+    #     model = get_local_model(name)
+    #     if not model:
+    #         print("model not found locally at: ", data_directory)
+    #         model = get_online_model(name)
+    #     print(" done")
+    #     return model
+    # except Exception as e:
+    #     raise e
 
 
 @st.experimental_singleton

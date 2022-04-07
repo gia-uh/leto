@@ -1,5 +1,5 @@
 app:
-	docker-compose -f docker/docker-compose.yml up
+	docker-compose -f docker/docker-compose.yml up --remove-orphans
 
 image:
 	docker-compose -f docker/docker-compose.yml build
