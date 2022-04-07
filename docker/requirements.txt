@@ -76,7 +76,6 @@ nltk==3.6.2
 notebook==6.4.0
 numpy==1.19.2
 oauthlib==3.1.1
-opennre @ git+https://github.com/thunlp/OpenNRE.git@ad6c5b41df6d4aaaa0e09bc45e81ec7cb6cb6b2c
 opt-einsum==3.3.0
 packaging==20.9
 pandas==1.0.3

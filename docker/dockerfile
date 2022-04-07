@@ -23,7 +23,6 @@ RUN mkdir -p /home/$USERNAME/.vscode-server/extensions \
 
 COPY requirements.txt /home/$USERNAME/requirements.txt
 RUN python3 -m pip --disable-pip-version-check install -r /home/$USERNAME/requirements.txt
-RUN python3 -m pip install --upgrade tensorflow
 RUN python3 -m coreferee install en
 
 #setup OpenNRE
