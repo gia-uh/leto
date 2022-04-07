@@ -91,7 +91,9 @@ class GraphStorage(Storage):
     @property
     def size(self):
         with self.driver.session() as session:
-            for record in session.run("MATCH (n1)-[r]->(n2) RETURN count(n1) + count(r)"):
+            for record in session.run(
+                "MATCH (n1)-[r]->(n2) RETURN count(n1) + count(r)"
+            ):
                 return record.values()[0]
 
     def store(self, entity_or_relation: Union[Entity, Relation]):
@@ -134,7 +136,7 @@ class GraphStorage(Storage):
 
         with self.driver.session() as session:
             session.run(
-            f"""
+                f"""
             MATCH (n1:{relation.entity_from.type} {{ name:{repr(relation.entity_from.name)} }}),
                   (n2:{relation.entity_to.type} {{ name:{repr(relation.entity_to.name)} }})
             MERGE (n1)-[r:{relation.label} {{ {attributes_str} }}]->(n2)
@@ -147,7 +149,7 @@ class GraphStorage(Storage):
     def clear(self):
         with self.driver.session() as session:
             session.run(
-            """
+                """
             MATCH (n) DETACH DELETE (n)
             """
             )
@@ -167,11 +169,16 @@ class GraphQueryResolver(QueryResolver):
         if not query.entities:
             return
 
-        ignored_relations = ['has_source']
+        ignored_relations = ["has_source"]
 
         entity_filters = " OR ".join(f'n1.name = "{e}"' for e in query.entities)
-        ignored_labels = " AND ".join(f"none(e IN nodes(p) WHERE e:{label})" for label in query.ignored_labels)
-        ignored_relations = " AND ".join(f'none(r IN relationships(p) WHERE type(r) = "{label}")' for label in ignored_relations)
+        ignored_labels = " AND ".join(
+            f"none(e IN nodes(p) WHERE e:{label})" for label in query.ignored_labels
+        )
+        ignored_relations = " AND ".join(
+            f'none(r IN relationships(p) WHERE type(r) = "{label}")'
+            for label in ignored_relations
+        )
 
         filters = f"({entity_filters})"
 
@@ -181,12 +188,14 @@ class GraphQueryResolver(QueryResolver):
         if ignored_labels:
             filters += f" AND ({ignored_labels})"
 
-        cypher = dedent(f"""
+        cypher = dedent(
+            f"""
         MATCH p=(n1)-[*..{breadth}]-(n2)
         WHERE {filters}
         RETURN nodes(p) as nodes, relationships(p) as edges
         LIMIT {max_entities}
-        """)
+        """
+        )
 
         print(cypher, flush=True)
 

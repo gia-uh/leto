@@ -25,9 +25,7 @@ def bootstrap():
             query_breadth = int(
                 st.number_input("🔮 Query breadth", value=2, min_value=1)
             )
-            max_entities = int(
-                st.number_input("🔮 Max results", value=100, min_value=1)
-            )
+            max_entities = int(st.number_input("🔮 Max results", value=100, min_value=1))
 
             if st.button("💣 Clear database"):
                 storage.clear()
@@ -124,7 +122,7 @@ def example_queries():
         "alicante ratings and likes by location",
         "spain tourists by country",
         "alicante ~unemploymentinfo",
-        "alicante unemployment by municipality ~location"
+        "alicante unemployment by municipality ~location",
     ]:
         st.button(f"❔ {q}", on_click=set_example_query, args=(q,))
 

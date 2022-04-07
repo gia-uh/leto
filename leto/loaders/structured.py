@@ -78,7 +78,9 @@ class CSVLoader(Loader):
 
             names_to_entities = {}
             attribute_columns = [
-                c for c, t in column_types.items() if c not in entity_columns + [main_entity_id]
+                c
+                for c, t in column_types.items()
+                if c not in entity_columns + [main_entity_id]
             ]
 
             # Create all other entities
@@ -108,7 +110,7 @@ class CSVLoader(Loader):
                 }
 
                 if main_entity_id is None:
-                    attributes['_generated'] = "true"
+                    attributes["_generated"] = "true"
 
                 name = (
                     tupl[main_entity_id].strip()
