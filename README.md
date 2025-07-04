@@ -49,19 +49,31 @@ LETO is built with robust and modern open-source technologies:
 Getting started with LETO is straightforward:
 
 1. Install:  
-   You can install LETO via pip:  
-   pip install leto
+   You can install LETO via pip:
 
-   Or, if you prefer Docker:  
-   docker run \-p 8501:8501 gia-uh/leto  
-2. Launch the App:  
-   If installed via pip:  
-   leto  
-   If running via Docker, it's already up. Navigate to http://localhost:8501 (or your chosen port) in your web browser.  
-3. **Create a New Domain:** Within the Streamlit application, create a new "domain." A domain is a self-contained database and virtual space for your knowledge graph and content.  
-4. Upload Your Data:  
+   ```bash
+   pip install leto
+   ```
+
+   Or, if you prefer Docker:
+
+   ```bash
+   docker run \-p 8501:8501 gia-uh/leto
+   ```
+   
+3. Launch the App:  
+   If installed via pip:
+
+   ```bash
+   leto
+   ```
+   
+   If running via Docker, it's already up. Navigate to http://localhost:8501 (or your chosen port) in your web browser.
+   
+5. **Create a New Domain:** Within the Streamlit application, create a new "domain." A domain is a self-contained database and virtual space for your knowledge graph and content.  
+6. Upload Your Data:  
    Start uploading your text files, documents, CSVs, or provide website URLs. LETO will automatically begin building your knowledge graph.  
-5. Chat & Explore:  
+7. Chat & Explore:  
    Once data is ingested (or even during the process), you can start asking questions about your domain through the dialog interface. You can even manually request the synthesis of new information to be included directly into your graph.
 
 ## **⚠️ Project Status**
