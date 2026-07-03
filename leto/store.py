@@ -25,6 +25,7 @@ class NoteStore:
         self._docs = self._db.docs("notes", model=NoteDoc)   # beaver: typed collection
         self._graph = self._db.graph("links")                 # beaver: graph store
         self._vectors = self._db.vectors("embeddings")        # beaver: vector index
+        self._aliases = self._db.dict("aliases")              # beaver: alias map
 
     def put(self, note: Note, embedding: list[float] | None = None) -> None:
         (self.folder / f"{note.slug}.md").write_text(
@@ -50,9 +51,22 @@ class NoteStore:
 
     def get(self, slug: str) -> Note | None:
         path = self.folder / f"{slug}.md"
-        if not path.exists():
-            return None
-        return note_from_markdown(path.read_text(encoding="utf-8"), slug)
+        if path.exists():
+            return note_from_markdown(path.read_text(encoding="utf-8"), slug)
+        canonical = self._aliases.fetch(slug, None)            # beaver: alias fetch
+        if canonical and canonical != slug:
+            return self.get(canonical)
+        return None
+
+    def set_alias(self, old_slug: str, canonical_slug: str) -> None:
+        self._aliases.set(old_slug, canonical_slug)            # beaver: alias set
+
+    def delete(self, slug: str) -> None:
+        path = self.folder / f"{slug}.md"
+        if path.exists():
+            path.unlink()
+        self._docs.drop(slug)                                  # beaver: drop doc
+        self._vectors.delete(slug)                             # beaver: drop vector
 
     def match(self, query: str, top_k: int = 5) -> list[tuple[Note, float]]:
         results = self._docs.search(query, on=["title", "text"])  # beaver: FTS -> list[ScoredDocument]

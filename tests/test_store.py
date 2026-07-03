@@ -63,3 +63,20 @@ def test_all_notes_enumerates_sorted(store):
     store.put(Note(slug="water", kind=NoteKind.ENTITY, title="Water"))
     store.put(Note(slug="alan-turing", kind=NoteKind.ENTITY, title="Alan Turing"))
     assert [n.slug for n in store.all_notes()] == ["alan-turing", "water"]
+
+
+def test_delete_removes_file_and_get_returns_none(store, tmp_path):
+    store.put(Note(slug="water", kind=NoteKind.ENTITY, title="Water", body="H2O"),
+              embedding=[1.0, 0.0])
+    store.delete("water")
+    assert not (tmp_path / "notes" / "water.md").exists()
+    assert store.get("water") is None
+
+
+def test_get_follows_alias_to_canonical(store):
+    store.put(Note(slug="alan-turing", kind=NoteKind.ENTITY, title="Alan Turing",
+                   body="Founder."))
+    store.set_alias("turing-alan", "alan-turing")
+    resolved = store.get("turing-alan")
+    assert resolved is not None
+    assert resolved.slug == "alan-turing"
