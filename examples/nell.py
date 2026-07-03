@@ -222,6 +222,11 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def _log_tool_call(name: str, args: dict, result) -> None:
+    preview = str(result).replace("\n", " ")[:100]
+    print(f"  · {name}({', '.join(args)}) -> {preview}", flush=True)
+
+
 def main() -> None:
     args = parse_args()
     model = args.model or os.getenv("NELL_MODEL")
@@ -229,8 +234,30 @@ def main() -> None:
         sys.exit("error: set --model <openrouter-slug> or NELL_MODEL")
     if not (os.getenv("OPENROUTER_API_KEY") or os.getenv("API_KEY")):
         sys.exit("error: set OPENROUTER_API_KEY")
+
     vault = Path(args.vault or f".nell-{datetime.now():%Y%m%d-%H%M%S}")
-    print(f"topic: {args.topic!r} · model: {model} · cycles: {args.cycles} · vault: {vault}")
+    engine, store = build_engine(vault, model)
+    print(f"topic: {args.topic!r} · model: {model} · vault: {vault}")
+
+    try:
+        for cycle in range(1, args.cycles + 1):
+            print(f"\n=== cycle {cycle}/{args.cycles} ===", flush=True)
+            state: dict = {}
+            agent = build_agent(engine, model, state)   # fresh agent; engine/vault persist
+            agent._on_tool_call = _log_tool_call
+            try:
+                msg = asyncio.run(agent.chat(CYCLE_PROMPT.format(topic=args.topic)))
+                print("\n" + (getattr(msg, "content", "") or ""))
+            except Exception as e:                       # a cycle may fail; keep going
+                print(f"  cycle error: {type(e).__name__}: {e}", flush=True)
+            notes = store.all_notes()
+            print(format_cycle_report(cycle, notes, state.get("last_report") or SettleReport()))
+    except KeyboardInterrupt:
+        print("\ninterrupted — stopping.")
+    finally:
+        print("\n=== final recall ===")
+        print(_format_blob(engine.recall(args.topic)))
+        store.close()
 
 
 if __name__ == "__main__":
