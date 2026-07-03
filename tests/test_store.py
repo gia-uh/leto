@@ -80,3 +80,13 @@ def test_get_follows_alias_to_canonical(store):
     resolved = store.get("turing-alan")
     assert resolved is not None
     assert resolved.slug == "alan-turing"
+
+
+def test_redirect_edges_relinks_incoming_to_canonical(store):
+    # x -> turing-alan ; after redirect, x -> alan-turing, not turing-alan
+    store.put(Note(slug="alan-turing", kind=NoteKind.ENTITY, title="Alan Turing"))
+    store.put(Note(slug="turing-alan", kind=NoteKind.ENTITY, title="Turing, Alan"))
+    store.put(Note(slug="x", kind=NoteKind.ENTITY, title="X",
+                   links=["turing-alan"]))
+    store.redirect_edges("turing-alan", "alan-turing")
+    assert [n.slug for n in store.neighbors("x")] == ["alan-turing"]

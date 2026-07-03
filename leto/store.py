@@ -103,5 +103,11 @@ class NoteStore:
                 out.append(note)
         return out
 
+    def redirect_edges(self, from_slug: str, to_slug: str) -> None:
+        parents = list(self._graph.parents(from_slug, label="relates_to"))  # beaver: parents
+        for parent in parents:
+            self._graph.unlink(parent, from_slug, label="relates_to")       # beaver: unlink
+            self._graph.link(parent, to_slug, label="relates_to")           # beaver: link
+
     def close(self) -> None:
         self._db.close()
