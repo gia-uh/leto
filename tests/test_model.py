@@ -25,3 +25,23 @@ def test_extracted_item_roundtrips_fields():
 def test_knowledge_blob_starts_empty():
     blob = KnowledgeBlob(query="who is turing")
     assert blob.facts == [] and blob.procedures == []
+
+
+def test_note_has_empty_sources_and_aliases_by_default():
+    from leto.model import Note, NoteKind
+    n = Note(slug="alan-turing", kind=NoteKind.ENTITY, title="Alan Turing")
+    assert n.sources == []
+    assert n.aliases == []
+
+
+def test_merge_and_report_types_construct():
+    from leto.model import MergedNote, MergeRecord, SettleReport
+    m = MergedNote(title="Alan Turing", body="A mathematician.")
+    assert m.title == "Alan Turing"
+    rec = MergeRecord(canonical="alan-turing", absorbed=["turing-alan"],
+                      new_settlement="fleeting")
+    report = SettleReport(merged=[rec], promoted=["alan-turing"])
+    assert report.merged[0].absorbed == ["turing-alan"]
+    assert report.promoted == ["alan-turing"]
+    empty = SettleReport()
+    assert empty.merged == [] and empty.promoted == []

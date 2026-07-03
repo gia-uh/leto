@@ -30,6 +30,8 @@ class Note(BaseModel):
     body: str = ""
     settlement: Settlement = Settlement.FLEETING
     links: list[str] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)
+    aliases: list[str] = Field(default_factory=list)
 
 
 class ExtractedItem(BaseModel):
@@ -49,3 +51,19 @@ class KnowledgeBlob(BaseModel):
     query: str
     facts: list[RecalledNote] = Field(default_factory=list)
     procedures: list[RecalledNote] = Field(default_factory=list)
+
+
+class MergedNote(BaseModel):
+    title: str
+    body: str
+
+
+class MergeRecord(BaseModel):
+    canonical: str
+    absorbed: list[str] = Field(default_factory=list)
+    new_settlement: str | None = None
+
+
+class SettleReport(BaseModel):
+    merged: list[MergeRecord] = Field(default_factory=list)
+    promoted: list[str] = Field(default_factory=list)
