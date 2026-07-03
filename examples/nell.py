@@ -165,6 +165,54 @@ def make_leto_tools(engine: Engine, state: dict):
     return leto_recall, leto_ingest, leto_settle
 
 
+from ddgs import DDGS  # noqa: E402
+from lovelaice.core import Lovelaice  # noqa: E402
+from lovelaice.tools.web import fetch  # noqa: E402
+from leto import SettleReport  # noqa: E402
+
+
+async def web_search(query: str) -> str:
+    """Search the web (DuckDuckGo). Returns up to 5 results, one per line as
+    `title — url — snippet`. Use to find pages about a gap, then `fetch` a URL."""
+    def _search():
+        return DDGS().text(query, max_results=5)
+    results = await asyncio.to_thread(_search)
+    return "\n".join(f"{r['title']} — {r['href']} — {r['body']}"
+                     for r in results) or "no results"
+
+
+SYSTEM_PROMPT = (
+    "You are a never-ending learner. Your memory is LETO — you remember nothing "
+    "on your own; everything you know lives in the knowledge base, reachable via "
+    "leto_recall. Keep your knowledge growing and consolidated."
+)
+
+CYCLE_PROMPT = (
+    "Study the topic: {topic}.\n"
+    "1. Call leto_recall('{topic}') to see what you already know, and pick ONE gap.\n"
+    "2. Use web_search and fetch as many times as you need to research that gap; "
+    "call leto_ingest(text, source) on each useful page (source = its URL).\n"
+    "3. When satisfied, call leto_settle once.\n"
+    "4. Briefly report what you learned this cycle."
+)
+
+
+def build_agent(engine: Engine, model: str, state: dict) -> Lovelaice:
+    agent = Lovelaice(llm=make_llm(model), prompt=SYSTEM_PROMPT)
+    leto_recall, leto_ingest, leto_settle = make_leto_tools(engine, state)
+    for fn in (leto_recall, leto_ingest, leto_settle, web_search, fetch):
+        agent.tool(fn)
+    return agent
+
+
+def format_cycle_report(cycle: int, notes: list[Note], report: SettleReport) -> str:
+    by = Counter(n.settlement.value for n in notes)
+    return (f"cycle {cycle} · {len(notes)} notes "
+            f"(fleeting {by['fleeting']} / developing {by['developing']} / "
+            f"established {by['established']}) · merged {len(report.merged)} "
+            f"· promoted {len(report.promoted)}")
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Never-ending learner demo on LETO + lovelaice.")
     p.add_argument("topic", help="the topic to learn about")
