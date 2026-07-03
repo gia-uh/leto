@@ -12,6 +12,8 @@ def note_to_markdown(note: Note) -> str:
         title=note.title,
         settlement=note.settlement.value,
         links=list(note.links),
+        sources=list(note.sources),
+        aliases=list(note.aliases),
     )
     return frontmatter.dumps(post)
 
@@ -25,4 +27,6 @@ def note_from_markdown(text: str, slug: str) -> Note:
         body=post.content,
         settlement=Settlement(post.get("settlement", "fleeting")),
         links=list(post.get("links", []) or []),
+        sources=list(post.get("sources", []) or []),
+        aliases=list(post.get("aliases", []) or []),
     )
