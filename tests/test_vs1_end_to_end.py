@@ -1,3 +1,5 @@
+import re
+
 from leto import Engine, NoteStore
 from leto.model import ExtractedItem, NoteKind
 
@@ -12,19 +14,23 @@ def extractor(text: str):
     ]
 
 
+def embedder(text: str) -> list[float]:
+    vocab = ["alan", "turing", "enigma", "rotors", "key", "space"]
+    toks = set(re.findall(r"[a-z0-9]+", text.lower()))
+    return [1.0 if w in toks else 0.0 for w in vocab]
+
+
 def test_vs1_ingest_then_recall(tmp_path):
     store = NoteStore(folder=tmp_path / "notes", db_path=tmp_path / "leto.db")
-    engine = Engine(store=store, extractor=extractor)
+    engine = Engine(store=store, extractor=extractor, embedder=embedder)
 
-    # ingest → canonical markdown files exist on disk
-    engine.ingest("Turing broke Enigma at Bletchley.")
+    engine.ingest("Turing broke Enigma at Bletchley.", source="https://bletchley")
     assert (tmp_path / "notes" / "alan-turing.md").exists()
     assert (tmp_path / "notes" / "break-enigma.md").exists()
 
-    # recall → settlement-tagged blob with the expected concepts + how-to
     blob = engine.recall("search the key space", top_k=5)
     assert "break-enigma" in [r.note.slug for r in blob.procedures]
-    assert "alan-turing" in [r.note.slug for r in blob.facts]  # via one-hop graph
+    assert "alan-turing" in [r.note.slug for r in blob.facts]
     assert all(r.note.settlement.value == "fleeting"
                for r in blob.facts + blob.procedures)
 
