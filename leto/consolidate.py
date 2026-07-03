@@ -3,12 +3,14 @@ from __future__ import annotations
 import re
 from typing import Awaitable, Callable
 
-from leto.model import MergedNote, MergeRecord, Note, Settlement, SettleReport
+from leto.model import MergedGroup, MergeRecord, Note, Settlement, SettleReport
 from leto.store import NoteStore
 
 Embedder = Callable[[str], Awaitable[list[float]]]
-Judge = Callable[[Note, Note], Awaitable[bool]]
-Merger = Callable[[list[Note]], Awaitable[MergedNote]]
+# A cluster resolver: given a candidate cluster of notes, decide which members
+# are truly the same entity and return one MergedGroup per confirmed group
+# (dropping members it judges distinct). ONE LLM call per cluster.
+Merger = Callable[[list[Note]], Awaitable[list[MergedGroup]]]
 Gate = Callable[[Note, Settlement], Awaitable[bool]]
 
 SETTLEMENT_ORDER = [
@@ -38,7 +40,6 @@ class Consolidator:
         self,
         store: NoteStore,
         embedder: Embedder,
-        judge: Judge,
         merger: Merger,
         gate: Gate,
         *,
@@ -46,7 +47,6 @@ class Consolidator:
     ):
         self._store = store
         self._embed = embedder
-        self._judge = judge
         self._merge = merger
         self._gate = gate
         self._cap = candidate_cap
@@ -76,7 +76,9 @@ class Consolidator:
                     break
         return pairs
 
-    async def _clusters(self) -> list[list[str]]:
+    async def _candidate_clusters(self) -> list[list[str]]:
+        """Cheap (NO LLM) candidate clusters: connected components of the
+        blocking-pair similarity graph. The resolver splits/confirms each one."""
         parent: dict[str, str] = {}
 
         def find(x: str) -> str:
@@ -89,20 +91,22 @@ class Consolidator:
         def union(a: str, b: str) -> None:
             parent[find(a)] = find(b)
 
-        confirmed: set[str] = set()
         for a, b in await self._candidate_pairs():
-            na, nb = await self._store.get(a), await self._store.get(b)
-            if na is not None and nb is not None and await self._judge(na, nb):
-                union(a, b)
-                confirmed.update((a, b))
+            union(a, b)
 
         groups: dict[str, list[str]] = {}
-        for slug in confirmed:
+        for slug in parent:
             groups.setdefault(find(slug), []).append(slug)
         return [sorted(g) for g in groups.values() if len(g) >= 2]
 
-    async def _merge_cluster(self, slugs: list[str]) -> MergeRecord:
-        notes = [n for n in [await self._store.get(s) for s in slugs] if n is not None]
+    async def _commit_merge(self, group: MergedGroup) -> MergeRecord | None:
+        """Commit one resolver-confirmed group: pick survivor, union links +
+        sources, redirect edges, delete + alias absorbed, persist canonical
+        (title/body from the resolver)."""
+        notes = [n for n in [await self._store.get(s) for s in group.members]
+                 if n is not None]
+        if len(notes) < 2:
+            return None
         survivor = sorted(
             notes,
             key=lambda n: (-SETTLEMENT_ORDER.index(n.settlement),
@@ -111,7 +115,6 @@ class Consolidator:
         absorbed = [n for n in notes if n.slug != survivor.slug]
         absorbed_slugs = [n.slug for n in absorbed]
 
-        merged = await self._merge(notes)
         links = sorted(
             {link for n in notes for link in n.links}
             - {survivor.slug} - set(absorbed_slugs)
@@ -128,8 +131,8 @@ class Consolidator:
         canonical = Note(
             slug=survivor.slug,
             kind=survivor.kind,
-            title=merged.title,
-            body=merged.body,
+            title=group.title,
+            body=group.body,
             settlement=settlement,
             links=links,
             sources=sources,
@@ -169,8 +172,16 @@ class Consolidator:
 
     async def settle(self) -> SettleReport:
         report = SettleReport()
-        for cluster in await self._clusters():
-            report.merged.append(await self._merge_cluster(cluster))
+        for cluster in await self._candidate_clusters():
+            notes = [n for n in [await self._store.get(s) for s in cluster]
+                     if n is not None]
+            if len(notes) < 2:
+                continue
+            for group in await self._merge(notes):    # ONE LLM call per cluster
+                if len(group.members) >= 2:
+                    rec = await self._commit_merge(group)
+                    if rec is not None:
+                        report.merged.append(rec)
         for note in await self._store.all_notes():
             if await self._advance(note) is not None:
                 report.promoted.append(note.slug)

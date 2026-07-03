@@ -9,13 +9,14 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from leto.consolidate import Embedder, Gate, Judge, Merger
-from leto.model import MergedNote, Note, Settlement
+from leto.consolidate import Embedder, Gate, Merger
+from leto.model import MergedGroup, Note, Settlement
 
 
-class _SameEntity(BaseModel):
-    """Whether two notes describe the same real-world entity."""
-    same: bool
+class _Resolution(BaseModel):
+    """The resolver's verdict on a candidate cluster: zero or more confirmed
+    same-entity groups."""
+    groups: list[MergedGroup]
 
 
 class _Approve(BaseModel):
@@ -34,32 +35,28 @@ def lingo_embedder(**kwargs) -> Embedder:
     return embed
 
 
-def lingo_judge(engine) -> Judge:
-    from lingo import Context
-
-    async def judge(a: Note, b: Note) -> bool:
-        prompt = (
-            f"Note A — title: {a.title}\n{a.body}\n\n"
-            f"Note B — title: {b.title}\n{b.body}\n\n"
-            "Do A and B describe the SAME real-world entity?"
-        )
-        result = await engine.create(Context([]), _SameEntity, prompt)
-        return result.same
-
-    return judge
-
-
 def lingo_merger(engine) -> Merger:
+    """A cluster resolver: given a candidate cluster (which may mix truly-same
+    entities with merely-related ones), return one MergedGroup per confirmed
+    same-entity group. ONE LLM call per cluster."""
     from lingo import Context
 
-    async def merge(notes: list[Note]) -> MergedNote:
-        joined = "\n\n---\n\n".join(f"{n.title}\n{n.body}" for n in notes)
+    async def merge(notes: list[Note]) -> list[MergedGroup]:
+        listing = "\n".join(f"- [{n.slug}] {n.title}: {n.body}" for n in notes)
         prompt = (
-            "Fuse these notes about the same entity into ONE canonical note. "
-            "Return a single clear title and a merged body with no duplication:"
-            f"\n\n{joined}"
+            "Below is a candidate cluster of knowledge notes (each with a "
+            "[slug]). They were grouped only by surface similarity, so some may "
+            "be the SAME real-world entity and others merely related.\n\n"
+            "Group ONLY the notes that are the same specific entity (same person, "
+            "place, organization, device, method, or concept — possibly under "
+            "different names/spellings). Do NOT group merely related things: a "
+            "person vs. a thing they made; a place vs. someone who worked there; "
+            "a method vs. its inventor; a whole vs. its parts.\n\n"
+            "For each same-entity group of 2+ notes, return its member slugs and "
+            "a fused canonical title + body (no duplication). Omit singletons.\n\n"
+            f"{listing}"
         )
-        return await engine.create(Context([]), MergedNote, prompt)
+        return (await engine.create(Context([]), _Resolution, prompt)).groups
 
     return merge
 

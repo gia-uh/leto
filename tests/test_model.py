@@ -35,9 +35,11 @@ def test_note_has_empty_sources_and_aliases_by_default():
 
 
 def test_merge_and_report_types_construct():
-    from leto.model import MergedNote, MergeRecord, SettleReport
-    m = MergedNote(title="Alan Turing", body="A mathematician.")
+    from leto.model import MergedGroup, MergeRecord, SettleReport
+    m = MergedGroup(members=["alan-turing", "turing-alan"],
+                    title="Alan Turing", body="A mathematician.")
     assert m.title == "Alan Turing"
+    assert m.members == ["alan-turing", "turing-alan"]
     rec = MergeRecord(canonical="alan-turing", absorbed=["turing-alan"],
                       new_settlement="fleeting")
     report = SettleReport(merged=[rec], promoted=["alan-turing"])

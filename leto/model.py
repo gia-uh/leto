@@ -53,7 +53,12 @@ class KnowledgeBlob(BaseModel):
     procedures: list[RecalledNote] = Field(default_factory=list)
 
 
-class MergedNote(BaseModel):
+class MergedGroup(BaseModel):
+    """One resolved duplicate group within a candidate cluster: the subset of
+    member slugs that are truly the same entity, plus the fused canonical
+    title + body. A cluster resolver returns a list of these (dropping members
+    it judges distinct)."""
+    members: list[str]
     title: str
     body: str
 

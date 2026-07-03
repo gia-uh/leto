@@ -33,7 +33,7 @@ from pathlib import Path
 from lingo import LLM, Context, Engine as LingoEngine, tool as as_tool
 from pydantic import BaseModel
 
-from leto import Engine, ExtractedItem, MergedNote, Note, NoteStore, SettleReport, Settlement
+from leto import Engine, ExtractedItem, MergedGroup, Note, NoteStore, SettleReport, Settlement
 from ddgs import DDGS
 from lovelaice.tools.web import fetch                      # reused lovelaice tool
 from lovelaice.agent.agent import Agent, AgentConfig
@@ -68,11 +68,10 @@ class _Extraction(BaseModel):
     items: list[ExtractedItem]
 
 
-class _SameEntity(BaseModel):
-    """Whether two notes are the SAME real-world entity (not merely related).
-    `reason` is filled first so the model reasons before deciding (CoT)."""
-    reason: str
-    same: bool
+class _Resolution(BaseModel):
+    """The resolver's verdict on a candidate cluster: zero or more confirmed
+    same-entity groups."""
+    groups: list[MergedGroup]
 
 
 class _Approve(BaseModel):
@@ -80,7 +79,8 @@ class _Approve(BaseModel):
     approve: bool
 
 
-_Extraction.model_rebuild()  # resolve list[ExtractedItem] forward ref
+_Extraction.model_rebuild()   # resolve list[ExtractedItem] forward ref
+_Resolution.model_rebuild()   # resolve list[MergedGroup] forward ref
 
 
 def make_deps(model: str):
@@ -98,34 +98,26 @@ def make_deps(model: str):
         )
         return (await lengine.create(Context([]), _Extraction, prompt)).items
 
-    async def judge(a: Note, b: Note) -> bool:
+    async def merger(notes: list[Note]) -> list[MergedGroup]:
+        # ONE LLM call per candidate cluster: decide which members are the SAME
+        # entity (strict — not merely related) and fuse each group.
+        listing = "\n".join(f"- [{n.slug}] {n.title}: {n.body}" for n in notes)
         prompt = (
-            "You are deduplicating a knowledge base. Decide if the two notes are "
-            "the SAME real-world entity — the same specific person, place, "
-            "organization, device, method, or concept — possibly under different "
-            "names or spellings.\n\n"
-            "Answer NO if they are merely related, associated, or co-occurring: a "
-            "person vs. a thing they invented or worked on; a place vs. a person "
-            "who worked there; a method or tool vs. the person who devised it; a "
-            "whole vs. one of its parts. Closely connected but distinct things are "
-            "NOT the same entity.\n\n"
-            "Examples — SAME: 'Alan Turing' / 'Turing, Alan'; 'Bombe' / 'Bombe "
-            "machine'. NOT SAME: 'Arthur Scherbius' (person) / 'Enigma machine' "
-            "(device); 'Bletchley Park' (place) / 'Alan Turing' (person); "
-            "'Banburismus' (method) / 'Alan Turing' (person).\n\n"
-            f"Note A — {a.title}: {a.body}\n\nNote B — {b.title}: {b.body}\n\n"
-            "Give a one-sentence reason, then decide."
+            "Below is a candidate cluster of knowledge notes (each with a "
+            "[slug]). They were grouped only by surface similarity, so some may "
+            "be the SAME real-world entity and others merely related.\n\n"
+            "Group ONLY the notes that are the same specific entity (same person, "
+            "place, organization, device, method, or concept — possibly under "
+            "different names/spellings). Do NOT group merely related things: a "
+            "person vs. a thing they made; a place vs. someone who worked there; "
+            "a method vs. its inventor; a whole vs. its parts. Example: 'Alan "
+            "Turing'/'Turing, Alan' are the SAME; 'Arthur Scherbius'/'Enigma "
+            "machine' are NOT.\n\n"
+            "For each same-entity group of 2+ notes, return its member slugs and "
+            "a fused canonical title + body (no duplication). Omit singletons.\n\n"
+            f"{listing}"
         )
-        return (await lengine.create(Context([]), _SameEntity, prompt)).same
-
-    async def merger(notes: list[Note]) -> MergedNote:
-        joined = "\n\n---\n\n".join(f"{n.title}: {n.body}" for n in notes)
-        prompt = (
-            "Fuse these notes about the same entity into ONE canonical note. "
-            "Return a single clear title and a merged body without duplication:"
-            f"\n\n{joined}"
-        )
-        return await lengine.create(Context([]), MergedNote, prompt)
+        return (await lengine.create(Context([]), _Resolution, prompt)).groups
 
     async def gate(note: Note, level: Settlement) -> bool:
         prompt = (
@@ -134,13 +126,13 @@ def make_deps(model: str):
         )
         return (await lengine.create(Context([]), _Approve, prompt)).approve
 
-    return extractor, judge, merger, gate, _hash_embedder
+    return extractor, merger, gate, _hash_embedder
 
 
 async def build_engine(vault: Path, model: str) -> tuple[Engine, NoteStore]:
     store = await NoteStore.open(folder=vault / "notes", db_path=vault / "leto.db")
-    extractor, judge, merger, gate, embedder = make_deps(model)
-    engine = Engine(store, extractor, embedder, judge=judge, merger=merger, gate=gate)
+    extractor, merger, gate, embedder = make_deps(model)
+    engine = Engine(store, extractor, embedder, merger=merger, gate=gate)
     return engine, store
 
 

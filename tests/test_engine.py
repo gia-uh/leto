@@ -76,3 +76,22 @@ async def test_reingest_same_entity_unions_sources_and_preserves_settlement(engi
     assert set(again.sources) == {"https://s1", "https://s2"}   # provenance accrues
     assert again.settlement is Settlement.DEVELOPING            # not demoted
     assert "computer-science" in again.links                    # links preserved
+
+
+async def test_recall_is_hybrid_semantic_via_vector(tmp_path):
+    # A note whose FTS text shares NO token with the query, but whose embedding
+    # matches the query's — only the vector (semantic) path can surface it.
+    async def const_embedder(text: str) -> list[float]:
+        t = text.lower()
+        return [1.0, 0.0] if ("moon" in t or "luna" in t) else [0.0, 1.0]
+
+    async def extract(text: str):
+        return [ExtractedItem(kind=NoteKind.ENTITY, title="Moon",
+                              body="Earth's natural satellite.")]
+
+    store = await NoteStore.open(folder=tmp_path / "n", db_path=tmp_path / "leto.db")
+    engine = Engine(store=store, extractor=extract, embedder=const_embedder)
+    await engine.ingest("...", source="s")
+    blob = await engine.recall("luna", top_k=5)   # no lexical overlap with the note
+    assert "moon" in [r.note.slug for r in blob.facts]
+    await store.close()

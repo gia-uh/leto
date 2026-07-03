@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Awaitable, Callable
 
-from leto.consolidate import Consolidator, Embedder, Gate, Judge, Merger
+from leto.consolidate import Consolidator, Embedder, Gate, Merger
 from leto.model import (
     ExtractedItem, KnowledgeBlob, Note, NoteKind, RecalledNote, Settlement,
     SettleReport, slugify,
@@ -18,7 +18,6 @@ class Engine:
         store: NoteStore,
         extractor: Extractor,
         embedder: Embedder,
-        judge: Judge | None = None,
         merger: Merger | None = None,
         gate: Gate | None = None,
         *,
@@ -28,9 +27,9 @@ class Engine:
         self._extract = extractor
         self._embed = embedder
         self._consolidator: Consolidator | None = None
-        if judge and merger and gate:
+        if merger and gate:
             self._consolidator = Consolidator(
-                store, embedder, judge, merger, gate, candidate_cap=candidate_cap)
+                store, embedder, merger, gate, candidate_cap=candidate_cap)
 
     async def ingest(self, text: str, source: str) -> list[Note]:
         notes: list[Note] = []
@@ -69,9 +68,13 @@ class Engine:
         return await self._consolidator.settle()
 
     async def recall(self, query: str, top_k: int = 5) -> KnowledgeBlob:
+        # Hybrid: semantic (vector) ∪ lexical (FTS), then one-hop graph.
         blob = KnowledgeBlob(query=query)
         seen: set[str] = set()
-        for note, score in await self._store.match(query, top_k=top_k):
+        vector_hits = await self._store.search_vector(
+            await self._embed(query), top_k=top_k)
+        fts_hits = await self._store.match(query, top_k=top_k)
+        for note, score in [*vector_hits, *fts_hits]:
             self._add(blob, RecalledNote(note=note, score=score, via="match"), seen)
             for neighbor in await self._store.neighbors(note.slug):
                 self._add(

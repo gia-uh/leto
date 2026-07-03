@@ -3,7 +3,7 @@ import re
 import pytest
 
 from leto import Engine, NoteStore
-from leto.model import ExtractedItem, MergedNote, Note, NoteKind, Settlement
+from leto.model import ExtractedItem, MergedGroup, Note, NoteKind, Settlement
 
 
 async def embedder(text: str) -> list[float]:
@@ -12,15 +12,22 @@ async def embedder(text: str) -> list[float]:
     return [1.0 if w in toks else 0.0 for w in vocab]
 
 
-async def title_stem_judge(a: Note, b: Note) -> bool:
-    stem = lambda t: set(re.findall(r"[a-z0-9]+", t.lower()))
-    return stem(a.title) == stem(b.title)
+def _tokens(t: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9]+", t.lower()))
 
 
-async def concat_merger(notes: list[Note]) -> MergedNote:
-    ordered = sorted(notes, key=lambda n: n.slug)
-    return MergedNote(title=ordered[0].title,
-                      body="\n\n".join(n.body for n in ordered if n.body))
+async def stem_resolver(notes: list[Note]) -> list[MergedGroup]:
+    groups: dict[frozenset, list[Note]] = {}
+    for n in notes:
+        groups.setdefault(frozenset(_tokens(n.title)), []).append(n)
+    out = []
+    for members in groups.values():
+        if len(members) >= 2:
+            ordered = sorted(members, key=lambda n: n.slug)
+            out.append(MergedGroup(members=[n.slug for n in ordered],
+                                   title=ordered[0].title,
+                                   body=" / ".join(n.body for n in ordered)))
+    return out
 
 
 async def approve_gate(note: Note, level: Settlement) -> bool:
@@ -44,15 +51,13 @@ async def test_settle_requires_consolidation_deps(tmp_path):
 async def test_two_sources_of_same_entity_merge_and_advance(tmp_path):
     store = await NoteStore.open(folder=tmp_path / "n", db_path=tmp_path / "leto.db")
 
-    # source 1: "Alan Turing" the mathematician
     await Engine(store=store, extractor=_extractor_for("Alan Turing", "Mathematician."),
                  embedder=embedder).ingest("...", source="https://s1")
-    # source 2: "Turing, Alan" the codebreaker — same entity, different spelling
     engine = Engine(
         store=store,
         extractor=_extractor_for("Turing, Alan", "Codebreaker."),
         embedder=embedder,
-        judge=title_stem_judge, merger=concat_merger, gate=approve_gate,
+        merger=stem_resolver, gate=approve_gate,
     )
     await engine.ingest("...", source="https://s2")
 
