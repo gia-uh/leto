@@ -82,3 +82,14 @@ def test_blocking_finds_duplicate_pair_and_excludes_unrelated(store):
     # returns every note) — the judge (Task 9) supplies precision and drops
     # the unrelated "water" pairing at the cluster stage.
     assert ("alan-turing", "turing-alan") in pairs
+
+
+def test_clusters_groups_confirmed_duplicates(store):
+    _make(store, "alan-turing", "Alan Turing", "mathematician computer science")
+    _make(store, "turing-alan", "Turing, Alan", "Alan Turing pioneer")
+    _make(store, "water", "Water", "liquid oxygen")
+    c = Consolidator(store, fake_embedder, title_stem_judge, concat_merger,
+                     approve_gate)
+    clusters = c._clusters()
+    assert len(clusters) == 1
+    assert set(clusters[0]) == {"alan-turing", "turing-alan"}

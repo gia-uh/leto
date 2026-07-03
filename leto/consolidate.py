@@ -63,3 +63,28 @@ class Consolidator:
                 if taken >= self._cap:
                     break
         return pairs
+
+    def _clusters(self) -> list[list[str]]:
+        parent: dict[str, str] = {}
+
+        def find(x: str) -> str:
+            parent.setdefault(x, x)
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        def union(a: str, b: str) -> None:
+            parent[find(a)] = find(b)
+
+        confirmed: set[str] = set()
+        for a, b in self._candidate_pairs():
+            na, nb = self._store.get(a), self._store.get(b)
+            if na is not None and nb is not None and self._judge(na, nb):
+                union(a, b)
+                confirmed.update((a, b))
+
+        groups: dict[str, list[str]] = {}
+        for slug in confirmed:
+            groups.setdefault(find(slug), []).append(slug)
+        return [sorted(g) for g in groups.values() if len(g) >= 2]
