@@ -1,10 +1,11 @@
-"""Default LLM/embedding backends for consolidation, wired to lingo.
+"""Default LLM/embedding backends for consolidation, wired to lingo (async).
 
 NOT unit-tested (non-deterministic). Install with:  uv sync --extra llm
+
+LETO is async-native, so these backends are plain async callables that `await`
+lingo directly — no event-loop bridging.
 """
 from __future__ import annotations
-
-import asyncio
 
 from pydantic import BaseModel
 
@@ -27,8 +28,8 @@ def lingo_embedder(**kwargs) -> Embedder:
 
     embedder = LingoEmbedder(**kwargs)
 
-    def embed(text: str) -> list[float]:
-        return asyncio.run(embedder.embed(text))
+    async def embed(text: str) -> list[float]:
+        return await embedder.embed(text)
 
     return embed
 
@@ -36,13 +37,13 @@ def lingo_embedder(**kwargs) -> Embedder:
 def lingo_judge(engine) -> Judge:
     from lingo import Context
 
-    def judge(a: Note, b: Note) -> bool:
+    async def judge(a: Note, b: Note) -> bool:
         prompt = (
             f"Note A — title: {a.title}\n{a.body}\n\n"
             f"Note B — title: {b.title}\n{b.body}\n\n"
             "Do A and B describe the SAME real-world entity?"
         )
-        result = asyncio.run(engine.create(Context([]), _SameEntity, prompt))
+        result = await engine.create(Context([]), _SameEntity, prompt)
         return result.same
 
     return judge
@@ -51,14 +52,14 @@ def lingo_judge(engine) -> Judge:
 def lingo_merger(engine) -> Merger:
     from lingo import Context
 
-    def merge(notes: list[Note]) -> MergedNote:
+    async def merge(notes: list[Note]) -> MergedNote:
         joined = "\n\n---\n\n".join(f"{n.title}\n{n.body}" for n in notes)
         prompt = (
             "Fuse these notes about the same entity into ONE canonical note. "
             "Return a single clear title and a merged body with no duplication:"
             f"\n\n{joined}"
         )
-        return asyncio.run(engine.create(Context([]), MergedNote, prompt))
+        return await engine.create(Context([]), MergedNote, prompt)
 
     return merge
 
@@ -66,13 +67,13 @@ def lingo_merger(engine) -> Merger:
 def lingo_gate(engine) -> Gate:
     from lingo import Context
 
-    def gate(note: Note, level: Settlement) -> bool:
+    async def gate(note: Note, level: Settlement) -> bool:
         prompt = (
             f"Note title: {note.title}\n{note.body}\n\n"
             f"It has {len(set(note.sources))} corroborating sources. "
             f"Is it coherent and complete enough to be marked '{level.value}'?"
         )
-        result = asyncio.run(engine.create(Context([]), _Approve, prompt))
+        result = await engine.create(Context([]), _Approve, prompt)
         return result.approve
 
     return gate

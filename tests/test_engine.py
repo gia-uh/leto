@@ -1,13 +1,14 @@
 import re
 
 import pytest
+import pytest_asyncio
 
 from leto.model import ExtractedItem, NoteKind, Settlement
 from leto.store import NoteStore
 from leto.engine import Engine
 
 
-def fake_extractor(text: str):
+async def fake_extractor(text: str):
     # deterministic — no LLM
     return [
         ExtractedItem(kind=NoteKind.ENTITY, title="Alan Turing",
@@ -21,21 +22,21 @@ def fake_extractor(text: str):
     ]
 
 
-def fake_embedder(text: str) -> list[float]:
+async def fake_embedder(text: str) -> list[float]:
     vocab = ["alan", "turing", "computer", "science", "cipher", "machine", "key"]
     toks = set(re.findall(r"[a-z0-9]+", text.lower()))
     return [1.0 if w in toks else 0.0 for w in vocab]
 
 
-@pytest.fixture
-def engine(tmp_path):
-    store = NoteStore(folder=tmp_path / "notes", db_path=tmp_path / "leto.db")
+@pytest_asyncio.fixture
+async def engine(tmp_path):
+    store = await NoteStore.open(folder=tmp_path / "notes", db_path=tmp_path / "leto.db")
     yield Engine(store=store, extractor=fake_extractor, embedder=fake_embedder)
-    store.close()
+    await store.close()
 
 
-def test_ingest_writes_fleeting_notes_with_slugged_links(engine):
-    notes = engine.ingest("... any text ...", source="https://src/1")
+async def test_ingest_writes_fleeting_notes_with_slugged_links(engine):
+    notes = await engine.ingest("... any text ...", source="https://src/1")
     assert len(notes) == 3
     assert all(n.settlement is Settlement.FLEETING for n in notes)
     assert all(n.sources == ["https://src/1"] for n in notes)
@@ -44,14 +45,14 @@ def test_ingest_writes_fleeting_notes_with_slugged_links(engine):
     assert turing.links == ["computer-science"]
 
 
-def test_ingested_notes_are_retrievable_from_store(engine):
-    engine.ingest("...", source="https://src/1")
-    assert engine._store.get("break-a-cipher").kind is NoteKind.PROCEDURE
+async def test_ingested_notes_are_retrievable_from_store(engine):
+    await engine.ingest("...", source="https://src/1")
+    assert (await engine._store.get("break-a-cipher")).kind is NoteKind.PROCEDURE
 
 
-def test_recall_returns_settlement_tagged_blob_with_graph_expansion(engine):
-    engine.ingest("...", source="https://src/1")
-    blob = engine.recall("cipher key space", top_k=5)
+async def test_recall_returns_settlement_tagged_blob_with_graph_expansion(engine):
+    await engine.ingest("...", source="https://src/1")
+    blob = await engine.recall("cipher key space", top_k=5)
     assert blob.query == "cipher key space"
     proc_slugs = [r.note.slug for r in blob.procedures]
     assert "break-a-cipher" in proc_slugs
@@ -63,16 +64,15 @@ def test_recall_returns_settlement_tagged_blob_with_graph_expansion(engine):
                for r in blob.facts + blob.procedures)
 
 
-def test_reingest_same_entity_unions_sources_and_preserves_settlement(engine):
-    from leto.model import Settlement
-    engine.ingest("first", source="https://s1")
+async def test_reingest_same_entity_unions_sources_and_preserves_settlement(engine):
+    await engine.ingest("first", source="https://s1")
     # bump a note up the gradient, as consolidation would
-    turing = engine._store.get("alan-turing")
+    turing = await engine._store.get("alan-turing")
     turing.settlement = Settlement.DEVELOPING
-    engine._store.put(turing)
+    await engine._store.put(turing)
     # re-encounter the same entities from a new source
-    engine.ingest("second", source="https://s2")
-    again = engine._store.get("alan-turing")
+    await engine.ingest("second", source="https://s2")
+    again = await engine._store.get("alan-turing")
     assert set(again.sources) == {"https://s1", "https://s2"}   # provenance accrues
-    assert again.settlement is Settlement.DEVELOPING            # not demoted to fleeting
-    assert "computer-science" in again.links                    # links preserved/unioned
+    assert again.settlement is Settlement.DEVELOPING            # not demoted
+    assert "computer-science" in again.links                    # links preserved

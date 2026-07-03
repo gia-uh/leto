@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import Awaitable, Callable
 
 from leto.consolidate import Consolidator, Embedder, Gate, Judge, Merger
 from leto.model import (
@@ -9,7 +9,7 @@ from leto.model import (
 )
 from leto.store import NoteStore
 
-Extractor = Callable[[str], list[ExtractedItem]]
+Extractor = Callable[[str], Awaitable[list[ExtractedItem]]]
 
 
 class Engine:
@@ -32,12 +32,12 @@ class Engine:
             self._consolidator = Consolidator(
                 store, embedder, judge, merger, gate, candidate_cap=candidate_cap)
 
-    def ingest(self, text: str, source: str) -> list[Note]:
+    async def ingest(self, text: str, source: str) -> list[Note]:
         notes: list[Note] = []
-        for item in self._extract(text):
+        for item in await self._extract(text):
             slug = slugify(item.title)
             links = [slugify(link) for link in item.links]
-            existing = self._store.get(slug)
+            existing = await self._store.get(slug)
             if existing is not None:
                 # Same entity re-encountered: accumulate provenance and links,
                 # keep the existing body and settlement. This is how a note's
@@ -45,7 +45,7 @@ class Engine:
                 # settlement gradient — without waiting on a merge.
                 existing.sources = sorted(set(existing.sources) | {source})
                 existing.links = sorted(set(existing.links) | set(links))
-                self._store.put(existing)
+                await self._store.put(existing)
                 notes.append(existing)
             else:
                 note = Note(
@@ -57,23 +57,23 @@ class Engine:
                     links=links,
                     sources=[source],
                 )
-                self._store.put(
-                    note, embedding=self._embed(f"{note.title}\n{note.body}"))
+                await self._store.put(
+                    note, embedding=await self._embed(f"{note.title}\n{note.body}"))
                 notes.append(note)
         return notes
 
-    def settle(self) -> SettleReport:
+    async def settle(self) -> SettleReport:
         if self._consolidator is None:
             raise RuntimeError(
                 "settle() requires judge, merger, and gate to be configured")
-        return self._consolidator.settle()
+        return await self._consolidator.settle()
 
-    def recall(self, query: str, top_k: int = 5) -> KnowledgeBlob:
+    async def recall(self, query: str, top_k: int = 5) -> KnowledgeBlob:
         blob = KnowledgeBlob(query=query)
         seen: set[str] = set()
-        for note, score in self._store.match(query, top_k=top_k):
+        for note, score in await self._store.match(query, top_k=top_k):
             self._add(blob, RecalledNote(note=note, score=score, via="match"), seen)
-            for neighbor in self._store.neighbors(note.slug):
+            for neighbor in await self._store.neighbors(note.slug):
                 self._add(
                     blob,
                     RecalledNote(note=neighbor, score=0.0, via="graph"),

@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "pytest-asyncio"]
 llm = ["lingo-ai>=2.1.0"]
 
 [tool.uv]
@@ -25,3 +25,4 @@ packages = ["leto"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
