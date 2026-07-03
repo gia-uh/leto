@@ -3,13 +3,20 @@ from __future__ import annotations
 import re
 from typing import Callable
 
-from leto.model import MergedNote, Note, Settlement
+from leto.model import MergedNote, MergeRecord, Note, Settlement
 from leto.store import NoteStore
 
 Embedder = Callable[[str], list[float]]
 Judge = Callable[[Note, Note], bool]
 Merger = Callable[[list[Note]], MergedNote]
 Gate = Callable[[Note, Settlement], bool]
+
+SETTLEMENT_ORDER = [
+    Settlement.FLEETING,
+    Settlement.DEVELOPING,
+    Settlement.ESTABLISHED,
+    Settlement.PERMANENT,
+]
 
 
 def rerank(*rankings: list[str], k: int = 60) -> list[str]:
@@ -88,3 +95,53 @@ class Consolidator:
         for slug in confirmed:
             groups.setdefault(find(slug), []).append(slug)
         return [sorted(g) for g in groups.values() if len(g) >= 2]
+
+    def _merge_cluster(self, slugs: list[str]) -> MergeRecord:
+        notes = [n for n in (self._store.get(s) for s in slugs) if n is not None]
+        survivor = sorted(
+            notes,
+            key=lambda n: (-SETTLEMENT_ORDER.index(n.settlement),
+                           -len(set(n.sources)), n.slug),
+        )[0]
+        absorbed = [n for n in notes if n.slug != survivor.slug]
+        absorbed_slugs = [n.slug for n in absorbed]
+
+        merged = self._merge(notes)
+        links = sorted(
+            {link for n in notes for link in n.links}
+            - {survivor.slug} - set(absorbed_slugs)
+        )
+        sources = sorted({s for n in notes for s in n.sources})
+        settlement = max(
+            notes, key=lambda n: SETTLEMENT_ORDER.index(n.settlement)).settlement
+        aliases = sorted(
+            set(survivor.aliases)
+            | set(absorbed_slugs)
+            | {a for n in absorbed for a in n.aliases}
+        )
+
+        canonical = Note(
+            slug=survivor.slug,
+            kind=survivor.kind,
+            title=merged.title,
+            body=merged.body,
+            settlement=settlement,
+            links=links,
+            sources=sources,
+            aliases=aliases,
+        )
+
+        for n in absorbed:
+            self._store.redirect_edges(n.slug, survivor.slug)
+            self._store.delete(n.slug)
+            self._store.set_alias(n.slug, survivor.slug)
+
+        self._store.put(
+            canonical,
+            embedding=self._embed(f"{canonical.title}\n{canonical.body}"),
+        )
+        return MergeRecord(
+            canonical=survivor.slug,
+            absorbed=absorbed_slugs,
+            new_settlement=settlement.value,
+        )

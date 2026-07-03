@@ -93,3 +93,28 @@ def test_clusters_groups_confirmed_duplicates(store):
     clusters = c._clusters()
     assert len(clusters) == 1
     assert set(clusters[0]) == {"alan-turing", "turing-alan"}
+
+
+def test_merge_cluster_produces_one_canonical_note(store):
+    _make(store, "alan-turing", "Alan Turing", "Mathematician.", sources=["s1"])
+    _make(store, "turing-alan", "Turing, Alan", "Codebreaker.", sources=["s2"])
+    # something links to the soon-absorbed slug
+    store.put(Note(slug="bletchley", kind=NoteKind.ENTITY, title="Bletchley",
+                   body="Park.", links=["turing-alan"]),
+              embedding=fake_embedder("Bletchley Park"))
+    c = Consolidator(store, fake_embedder, title_stem_judge, concat_merger,
+                     approve_gate)
+
+    rec = c._merge_cluster(["alan-turing", "turing-alan"])
+
+    # survivor is lexicographically-first on the fleeting/1-source tie
+    assert rec.canonical == "alan-turing"
+    assert rec.absorbed == ["turing-alan"]
+    # absorbed note is gone as a file but resolves via alias
+    assert store.get("turing-alan").slug == "alan-turing"
+    # provenance unioned onto the canonical
+    canonical = store.get("alan-turing")
+    assert set(canonical.sources) == {"s1", "s2"}
+    assert "turing-alan" in canonical.aliases
+    # incoming edge redirected: bletchley now points at the canonical
+    assert [n.slug for n in store.neighbors("bletchley")] == ["alan-turing"]
