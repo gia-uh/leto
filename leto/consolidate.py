@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Callable
 
-from leto.model import MergedNote, MergeRecord, Note, Settlement
+from leto.model import MergedNote, MergeRecord, Note, Settlement, SettleReport
 from leto.store import NoteStore
 
 Embedder = Callable[[str], list[float]]
@@ -166,3 +166,12 @@ class Consolidator:
         self._store.put(
             note, embedding=self._embed(f"{note.title}\n{note.body}"))
         return nxt.value
+
+    def settle(self) -> SettleReport:
+        report = SettleReport()
+        for cluster in self._clusters():
+            report.merged.append(self._merge_cluster(cluster))
+        for note in self._store.all_notes():
+            if self._advance(note) is not None:
+                report.promoted.append(note.slug)
+        return report

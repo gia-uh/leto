@@ -152,3 +152,27 @@ def test_machine_never_sets_permanent(store):
                      approve_gate)
     assert c._advance(store.get("x")) is None
     assert store.get("x").settlement is Settlement.ESTABLISHED
+
+
+from leto.model import SettleReport
+
+
+def test_settle_merges_then_advances_then_is_idempotent(store):
+    # two spellings of Turing from two distinct sources + an unrelated note
+    _make(store, "alan-turing", "Alan Turing", "Mathematician.", sources=["s1"])
+    _make(store, "turing-alan", "Turing, Alan", "Codebreaker.", sources=["s2"])
+    _make(store, "water", "Water", "liquid oxygen", sources=["s1"])
+    c = Consolidator(store, fake_embedder, title_stem_judge, concat_merger,
+                     approve_gate)
+
+    report = c.settle()
+    assert isinstance(report, SettleReport)
+    assert [r.canonical for r in report.merged] == ["alan-turing"]
+    # merged canonical now has 2 distinct sources + gate True -> promoted
+    assert "alan-turing" in report.promoted
+    assert store.get("alan-turing").settlement is Settlement.DEVELOPING
+
+    # second pass: nothing new ingested -> no merges, no further promotion
+    again = c.settle()
+    assert again.merged == []
+    assert again.promoted == []
