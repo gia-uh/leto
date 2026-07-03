@@ -43,7 +43,7 @@ def make_llm(model: str, on_token=None) -> LLM:
     )
 
 
-from lingo import Context, Engine as LingoEngine  # noqa: E402
+from lingo import Context, Engine as LingoEngine, tool as as_tool  # noqa: E402
 from leto import ExtractedItem, MergedNote, Note, Settlement  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
@@ -75,11 +75,16 @@ class _Approve(BaseModel):
     approve: bool
 
 
+# `from __future__ import annotations` makes `list[ExtractedItem]` a forward ref;
+# resolve it now (ExtractedItem is imported above) so structured output works.
+_Extraction.model_rebuild()
+
+
 def _create(model: str, out_model: type[BaseModel], prompt: str) -> BaseModel:
     """One structured LLM pass with a FRESH client. Worker-thread only
     (called via asyncio.to_thread from tools) — never on the agent's loop."""
     async def _go():
-        return await LingoEngine(make_llm(model)).create(Context(), out_model, prompt)
+        return await LingoEngine(make_llm(model)).create(Context([]), out_model, prompt)
     return asyncio.run(_go())
 
 
@@ -166,8 +171,10 @@ def make_leto_tools(engine: Engine, state: dict):
 
 
 from ddgs import DDGS  # noqa: E402
-from lovelaice.core import Lovelaice  # noqa: E402
-from lovelaice.tools.web import fetch  # noqa: E402
+from lovelaice.tools.web import fetch  # noqa: E402  (reused lovelaice tool)
+from lovelaice.agent.agent import Agent, AgentConfig  # noqa: E402
+from lovelaice.agent.loops import ReActNative  # noqa: E402  (the native tool-call loop)
+from lovelaice.agent.tools import AgentTool  # noqa: E402
 from leto import SettleReport  # noqa: E402
 
 
@@ -197,11 +204,31 @@ CYCLE_PROMPT = (
 )
 
 
-def build_agent(engine: Engine, model: str, state: dict) -> Lovelaice:
-    agent = Lovelaice(llm=make_llm(model), prompt=SYSTEM_PROMPT)
+def build_tools(engine: Engine, state: dict) -> list[AgentTool]:
     leto_recall, leto_ingest, leto_settle = make_leto_tools(engine, state)
-    for fn in (leto_recall, leto_ingest, leto_settle, web_search, fetch):
-        agent.tool(fn)
+    return [
+        AgentTool(inner=as_tool(leto_recall), kind="read"),
+        AgentTool(inner=as_tool(leto_ingest), kind="edit"),
+        AgentTool(inner=as_tool(leto_settle), kind="other"),
+        AgentTool(inner=as_tool(web_search), kind="search"),
+        AgentTool(inner=as_tool(fetch), kind="fetch"),
+    ]
+
+
+def build_agent(engine: Engine, model: str, state: dict, session_path: Path) -> Agent:
+    """A fresh lovelaice native-ReAct agent. `max_tokens` is capped because
+    Anthropic-via-OpenRouter defaults to a huge budget that can exceed credit
+    caps. State lives only in the LETO vault, so each cycle gets a fresh session."""
+    config = AgentConfig(
+        model=model,
+        system_prompt=SYSTEM_PROMPT,
+        api_key=os.getenv("OPENROUTER_API_KEY") or os.getenv("API_KEY"),
+        base_url=OPENROUTER_BASE_URL,
+        max_tokens=4096,
+    )
+    agent = Agent(config=config, tools=build_tools(engine, state),
+                  loop=ReActNative(), session_path=session_path)
+    agent.on("tool_execution_start", lambda ev: print(f"  · {ev.name}", flush=True))
     return agent
 
 
@@ -222,11 +249,11 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def _log_tool_call(result) -> None:
-    # lovelaice's ReAct loop calls this with a single lingo ToolResult.
-    payload = getattr(result, "error", None) or getattr(result, "result", "")
-    preview = str(payload).replace("\n", " ")[:100]
-    print(f"  · {getattr(result, 'tool', '?')} -> {preview}", flush=True)
+def _final_answer(agent: Agent) -> str:
+    for m in reversed(agent.messages_for_llm()):
+        if m.role == "assistant" and str(getattr(m, "content", "") or "").strip():
+            return str(m.content)
+    return ""
 
 
 def main() -> None:
@@ -238,6 +265,7 @@ def main() -> None:
         sys.exit("error: set OPENROUTER_API_KEY")
 
     vault = Path(args.vault or f".nell-{datetime.now():%Y%m%d-%H%M%S}")
+    (vault / "sessions").mkdir(parents=True, exist_ok=True)
     engine, store = build_engine(vault, model)
     print(f"topic: {args.topic!r} · model: {model} · vault: {vault}")
 
@@ -245,11 +273,13 @@ def main() -> None:
         for cycle in range(1, args.cycles + 1):
             print(f"\n=== cycle {cycle}/{args.cycles} ===", flush=True)
             state: dict = {}
-            agent = build_agent(engine, model, state)   # fresh agent; engine/vault persist
-            agent._on_tool_call = _log_tool_call
+            # Fresh agent + fresh session each cycle: the agent's only cross-cycle
+            # memory is the LETO vault (engine/store persist).
+            agent = build_agent(engine, model, state,
+                                vault / "sessions" / f"c{cycle}.json")
             try:
-                msg = asyncio.run(agent.chat(CYCLE_PROMPT.format(topic=args.topic)))
-                print("\n" + (getattr(msg, "content", "") or ""))
+                asyncio.run(agent.prompt(CYCLE_PROMPT.format(topic=args.topic)))
+                print("\n" + _final_answer(agent))
             except Exception as e:                       # a cycle may fail; keep going
                 print(f"  cycle error: {type(e).__name__}: {e}", flush=True)
             notes = store.all_notes()
