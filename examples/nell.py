@@ -66,7 +66,9 @@ class _Extraction(BaseModel):
 
 
 class _SameEntity(BaseModel):
-    """Whether two notes describe the same real-world entity."""
+    """Whether two notes are the SAME real-world entity (not merely related).
+    `reason` is filled first so the model reasons before deciding (CoT)."""
+    reason: str
     same: bool
 
 
@@ -104,8 +106,21 @@ def make_deps(model: str):
 
     def judge(a: Note, b: Note) -> bool:
         prompt = (
+            "You are deduplicating a knowledge base. Decide if the two notes are "
+            "the SAME real-world entity — the same specific person, place, "
+            "organization, device, method, or concept — possibly under different "
+            "names or spellings.\n\n"
+            "Answer NO if they are merely related, associated, or co-occurring: a "
+            "person vs. a thing they invented or worked on; a place vs. a person "
+            "who worked there; a method or tool vs. the person who devised it; a "
+            "whole vs. one of its parts. Closely connected but distinct things are "
+            "NOT the same entity.\n\n"
+            "Examples — SAME: 'Alan Turing' / 'Turing, Alan'; 'Bombe' / 'Bombe "
+            "machine'. NOT SAME: 'Arthur Scherbius' (person) / 'Enigma machine' "
+            "(device); 'Bletchley Park' (place) / 'Alan Turing' (person); "
+            "'Banburismus' (method) / 'Alan Turing' (person).\n\n"
             f"Note A — {a.title}: {a.body}\n\nNote B — {b.title}: {b.body}\n\n"
-            "Do A and B describe the SAME real-world entity?"
+            "Give a one-sentence reason, then decide."
         )
         return _create(model, _SameEntity, prompt).same
 
