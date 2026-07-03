@@ -48,3 +48,18 @@ def test_neighbors_follows_existing_links(store):
                    body="Founder.", links=["computer-science"]))
     nb = store.neighbors("alan-turing")
     assert [n.slug for n in nb] == ["computer-science"]
+
+
+def test_search_vector_ranks_by_nearness(store):
+    store.put(Note(slug="a", kind=NoteKind.ENTITY, title="A", body="x"),
+              embedding=[1.0, 0.0, 0.0])
+    store.put(Note(slug="b", kind=NoteKind.ENTITY, title="B", body="y"),
+              embedding=[0.0, 1.0, 0.0])
+    hits = store.search_vector([0.9, 0.1, 0.0], top_k=2)
+    assert hits[0][0].slug == "a"
+
+
+def test_all_notes_enumerates_sorted(store):
+    store.put(Note(slug="water", kind=NoteKind.ENTITY, title="Water"))
+    store.put(Note(slug="alan-turing", kind=NoteKind.ENTITY, title="Alan Turing"))
+    assert [n.slug for n in store.all_notes()] == ["alan-turing", "water"]

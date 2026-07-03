@@ -24,8 +24,9 @@ class NoteStore:
         self._db = BeaverDB(str(db_path))
         self._docs = self._db.docs("notes", model=NoteDoc)   # beaver: typed collection
         self._graph = self._db.graph("links")                 # beaver: graph store
+        self._vectors = self._db.vectors("embeddings")        # beaver: vector index
 
-    def put(self, note: Note) -> None:
+    def put(self, note: Note, embedding: list[float] | None = None) -> None:
         (self.folder / f"{note.slug}.md").write_text(
             note_to_markdown(note), encoding="utf-8"
         )
@@ -41,6 +42,8 @@ class NoteStore:
                 ),
             )
         )
+        if embedding is not None:
+            self._vectors.set(note.slug, embedding)           # beaver: vector set
         for target in note.links:
             if (self.folder / f"{target}.md").exists():
                 self._graph.link(note.slug, target, label="relates_to")  # beaver: edge
@@ -58,6 +61,24 @@ class NoteStore:
             note = self.get(scored.document.body.slug)
             if note is not None:
                 out.append((note, scored.score))
+        return out
+
+    def search_vector(
+        self, vector: list[float], top_k: int = 5
+    ) -> list[tuple[Note, float]]:
+        out: list[tuple[Note, float]] = []
+        for item in self._vectors.near(vector, k=top_k):      # beaver: vector near
+            note = self.get(item.id)
+            if note is not None:
+                out.append((note, item.score))
+        return out
+
+    def all_notes(self) -> list[Note]:
+        out: list[Note] = []
+        for path in sorted(self.folder.glob("*.md")):
+            note = self.get(path.stem)
+            if note is not None:
+                out.append(note)
         return out
 
     def neighbors(self, slug: str) -> list[Note]:
