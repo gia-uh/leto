@@ -11,6 +11,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest"]
+llm = ["lingo-ai>=2.1.0"]
 
 [tool.uv]
 prerelease = "allow"
