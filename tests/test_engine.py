@@ -38,3 +38,20 @@ def test_ingest_writes_fleeting_notes_with_slugged_links(engine):
 def test_ingested_notes_are_retrievable_from_store(engine):
     engine.ingest("...")
     assert engine._store.get("break-a-cipher").kind is NoteKind.PROCEDURE
+
+
+def test_recall_returns_settlement_tagged_blob_with_graph_expansion(engine):
+    engine.ingest("...")
+    # link procedure -> entity exists (Alan Turing written before Break a cipher)
+    blob = engine.recall("cipher key space", top_k=5)
+    assert blob.query == "cipher key space"
+    proc_slugs = [r.note.slug for r in blob.procedures]
+    assert "break-a-cipher" in proc_slugs
+    # one-hop expansion pulled in the linked entity as a fact via graph
+    fact_slugs = [r.note.slug for r in blob.facts]
+    assert "alan-turing" in fact_slugs
+    turing = next(r for r in blob.facts if r.note.slug == "alan-turing")
+    assert turing.via == "graph"
+    # settlement travels in the answer
+    assert all(r.note.settlement.value == "fleeting"
+               for r in blob.facts + blob.procedures)

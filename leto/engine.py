@@ -29,3 +29,26 @@ class Engine:
             self._store.put(note)
             notes.append(note)
         return notes
+
+    def recall(self, query: str, top_k: int = 5) -> KnowledgeBlob:
+        blob = KnowledgeBlob(query=query)
+        seen: set[str] = set()
+        for note, score in self._store.match(query, top_k=top_k):
+            self._add(blob, RecalledNote(note=note, score=score, via="match"), seen)
+            for neighbor in self._store.neighbors(note.slug):
+                self._add(
+                    blob,
+                    RecalledNote(note=neighbor, score=0.0, via="graph"),
+                    seen,
+                )
+        return blob
+
+    @staticmethod
+    def _add(blob: KnowledgeBlob, recalled: RecalledNote, seen: set[str]) -> None:
+        if recalled.note.slug in seen:
+            return
+        seen.add(recalled.note.slug)
+        if recalled.note.kind is NoteKind.ENTITY:
+            blob.facts.append(recalled)
+        else:
+            blob.procedures.append(recalled)
