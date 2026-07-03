@@ -52,8 +52,13 @@ Conceptually, LETO is where the loose ideas in Alex's ecosystem — **know-how**
 **ontology** (what is what) and **teleology** (what does what), as a solid,
 reusable package.
 
-The reference consumer, shipped as a **demo**, is `lovelaice` running as a basic
-knowledge agent that drives the full LETO cycle.
+The reference consumer, shipped as a **demo**, is a **never-ending learner à la
+NELL**: an agent (built on `lovelaice`) that, given a topic, loops — web-search →
+`ingest` the results → `settle`/`refactor` → repeat — continuously growing the
+ontology (entities/relations) *and* teleology (procedures) about that topic. It
+is the living proof of the "always improving" claim and of the boundary
+principle: the **agent owns the never-ending loop**, LETO provides the
+operations. See §8.7.
 
 ---
 
@@ -226,8 +231,13 @@ spec → plan → build. Dependency order, bottom-up:
 5. **Associative memory (recall reinforcement)** — the Hebbian, intent-
    conditioned layer + `reinforce`. *(on 1, 3)*
 6. **MCP server surface** — exposes the operations to agents. *(on 1–5)*
-7. **lovelaice demo** — a basic knowledge agent that runs the full cycle.
-   *(on 6)*
+7. **Never-ending learner demo** — a `lovelaice`-based agent that, given a
+   topic, loops web-search → `ingest` → `settle` → repeat, growing the ontology
+   + teleology of that topic without end (NELL-style, plus the teleological
+   layer NELL lacks). Needs a web-search tool and an autonomous loop that live
+   **in the agent, not in LETO**. Consumes LETO as a library (MCP surface
+   optional for this demo). *(on 1–4; associative layer §8.5 and MCP §8.6 are
+   enhancements, not prerequisites)*
 
 The **library API** is not a sub-project; it is *how* 1–5 are called.
 
@@ -267,7 +277,9 @@ layer → MCP surface → lovelaice demo.
 - **NELL.** Antecedent for never-ending accumulation and consolidation. LETO's
   differentiator is **task-relevant recall** and **usage-driven shaping** —
   NELL grows a global KB with no task; LETO builds the right active knowledge
-  for a query and learns navigation from feedback.
+  for a query and learns navigation from feedback. The §8.7 demo makes this
+  explicit: it re-does NELL (never-ending web-driven accumulation) but adds the
+  teleological layer and settlement gradient NELL never had.
 - **Beltrán's "Progressive Research Arc"** (working-memory construction from
   semantic / episodic / consolidated stores, neuro-symbolic). LETO provides the
   **substrate and a baseline** working-memory construction; his thesis
