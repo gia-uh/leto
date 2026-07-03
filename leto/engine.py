@@ -35,18 +35,31 @@ class Engine:
     def ingest(self, text: str, source: str) -> list[Note]:
         notes: list[Note] = []
         for item in self._extract(text):
-            note = Note(
-                slug=slugify(item.title),
-                kind=item.kind,
-                title=item.title,
-                body=item.body,
-                settlement=Settlement.FLEETING,
-                links=[slugify(link) for link in item.links],
-                sources=[source],
-            )
-            self._store.put(
-                note, embedding=self._embed(f"{note.title}\n{note.body}"))
-            notes.append(note)
+            slug = slugify(item.title)
+            links = [slugify(link) for link in item.links]
+            existing = self._store.get(slug)
+            if existing is not None:
+                # Same entity re-encountered: accumulate provenance and links,
+                # keep the existing body and settlement. This is how a note's
+                # distinct-source count grows across cycles so it can climb the
+                # settlement gradient — without waiting on a merge.
+                existing.sources = sorted(set(existing.sources) | {source})
+                existing.links = sorted(set(existing.links) | set(links))
+                self._store.put(existing)
+                notes.append(existing)
+            else:
+                note = Note(
+                    slug=slug,
+                    kind=item.kind,
+                    title=item.title,
+                    body=item.body,
+                    settlement=Settlement.FLEETING,
+                    links=links,
+                    sources=[source],
+                )
+                self._store.put(
+                    note, embedding=self._embed(f"{note.title}\n{note.body}"))
+                notes.append(note)
         return notes
 
     def settle(self) -> SettleReport:

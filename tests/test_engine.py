@@ -61,3 +61,18 @@ def test_recall_returns_settlement_tagged_blob_with_graph_expansion(engine):
     assert turing.via == "graph"
     assert all(r.note.settlement.value == "fleeting"
                for r in blob.facts + blob.procedures)
+
+
+def test_reingest_same_entity_unions_sources_and_preserves_settlement(engine):
+    from leto.model import Settlement
+    engine.ingest("first", source="https://s1")
+    # bump a note up the gradient, as consolidation would
+    turing = engine._store.get("alan-turing")
+    turing.settlement = Settlement.DEVELOPING
+    engine._store.put(turing)
+    # re-encounter the same entities from a new source
+    engine.ingest("second", source="https://s2")
+    again = engine._store.get("alan-turing")
+    assert set(again.sources) == {"https://s1", "https://s2"}   # provenance accrues
+    assert again.settlement is Settlement.DEVELOPING            # not demoted to fleeting
+    assert "computer-science" in again.links                    # links preserved/unioned
