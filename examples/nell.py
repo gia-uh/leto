@@ -222,9 +222,11 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def _log_tool_call(name: str, args: dict, result) -> None:
-    preview = str(result).replace("\n", " ")[:100]
-    print(f"  · {name}({', '.join(args)}) -> {preview}", flush=True)
+def _log_tool_call(result) -> None:
+    # lovelaice's ReAct loop calls this with a single lingo ToolResult.
+    payload = getattr(result, "error", None) or getattr(result, "result", "")
+    preview = str(payload).replace("\n", " ")[:100]
+    print(f"  · {getattr(result, 'tool', '?')} -> {preview}", flush=True)
 
 
 def main() -> None:
