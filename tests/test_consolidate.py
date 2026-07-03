@@ -118,3 +118,37 @@ def test_merge_cluster_produces_one_canonical_note(store):
     assert "turing-alan" in canonical.aliases
     # incoming edge redirected: bletchley now points at the canonical
     assert [n.slug for n in store.neighbors("bletchley")] == ["alan-turing"]
+
+
+def test_advance_promotes_with_enough_sources_and_gate_true(store):
+    note = _make(store, "alan-turing", "Alan Turing", "M.", sources=["s1", "s2"])
+    c = Consolidator(store, fake_embedder, title_stem_judge, concat_merger,
+                     approve_gate)
+    assert c._advance(note) == "developing"
+    assert store.get("alan-turing").settlement is Settlement.DEVELOPING
+
+
+def test_advance_denied_by_gate_stays_put(store):
+    note = _make(store, "alan-turing", "Alan Turing", "M.", sources=["s1", "s2"])
+    c = Consolidator(store, fake_embedder, title_stem_judge, concat_merger,
+                     deny_gate)
+    assert c._advance(note) is None
+    assert store.get("alan-turing").settlement is Settlement.FLEETING
+
+
+def test_advance_denied_by_insufficient_sources(store):
+    note = _make(store, "alan-turing", "Alan Turing", "M.", sources=["s1"])
+    c = Consolidator(store, fake_embedder, title_stem_judge, concat_merger,
+                     approve_gate)
+    assert c._advance(note) is None
+
+
+def test_machine_never_sets_permanent(store):
+    note = _make(store, "x", "X", "b",
+                 sources=["s1", "s2", "s3", "s4"])
+    note.settlement = Settlement.ESTABLISHED
+    store.put(note, embedding=fake_embedder("X b"))
+    c = Consolidator(store, fake_embedder, title_stem_judge, concat_merger,
+                     approve_gate)
+    assert c._advance(store.get("x")) is None
+    assert store.get("x").settlement is Settlement.ESTABLISHED

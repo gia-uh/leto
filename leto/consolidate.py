@@ -18,6 +18,11 @@ SETTLEMENT_ORDER = [
     Settlement.PERMANENT,
 ]
 
+SETTLEMENT_THRESHOLD = {
+    Settlement.DEVELOPING: 2,
+    Settlement.ESTABLISHED: 3,
+}
+
 
 def rerank(*rankings: list[str], k: int = 60) -> list[str]:
     """Reciprocal Rank Fusion over ranked id-lists (best first)."""
@@ -145,3 +150,19 @@ class Consolidator:
             absorbed=absorbed_slugs,
             new_settlement=settlement.value,
         )
+
+    def _advance(self, note: Note) -> str | None:
+        idx = SETTLEMENT_ORDER.index(note.settlement)
+        if idx + 1 >= len(SETTLEMENT_ORDER):
+            return None
+        nxt = SETTLEMENT_ORDER[idx + 1]
+        if nxt not in SETTLEMENT_THRESHOLD:          # permanent is human-only
+            return None
+        if len(set(note.sources)) < SETTLEMENT_THRESHOLD[nxt]:
+            return None
+        if not self._gate(note, nxt):
+            return None
+        note.settlement = nxt
+        self._store.put(
+            note, embedding=self._embed(f"{note.title}\n{note.body}"))
+        return nxt.value
