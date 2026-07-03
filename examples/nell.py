@@ -43,6 +43,86 @@ def make_llm(model: str, on_token=None) -> LLM:
     )
 
 
+from lingo import Context, Engine as LingoEngine  # noqa: E402
+from leto import ExtractedItem, MergedNote, Note, Settlement  # noqa: E402
+from pydantic import BaseModel  # noqa: E402
+
+EMB_DIM = 256
+
+
+def _hash_embedder(text: str) -> list[float]:
+    """Deterministic, keyless bag-of-tokens embedding. A stand-in for a real
+    embedding model — swap in `lingo.Embedder` if you have an embeddings API."""
+    vec = [0.0] * EMB_DIM
+    for tok in re.findall(r"[a-z0-9]+", text.lower()):
+        idx = int(hashlib.md5(tok.encode()).hexdigest(), 16) % EMB_DIM
+        vec[idx] += 1.0
+    return vec
+
+
+class _Extraction(BaseModel):
+    """Atomic factual/procedural notes extracted from a page."""
+    items: list[ExtractedItem]
+
+
+class _SameEntity(BaseModel):
+    """Whether two notes describe the same real-world entity."""
+    same: bool
+
+
+class _Approve(BaseModel):
+    """Whether a note is coherent/complete enough to advance a settlement level."""
+    approve: bool
+
+
+def _create(model: str, out_model: type[BaseModel], prompt: str) -> BaseModel:
+    """One structured LLM pass with a FRESH client. Worker-thread only
+    (called via asyncio.to_thread from tools) — never on the agent's loop."""
+    async def _go():
+        return await LingoEngine(make_llm(model)).create(Context(), out_model, prompt)
+    return asyncio.run(_go())
+
+
+def make_deps(model: str):
+    """Build LETO's injected dependencies (extractor, judge, merger, gate,
+    embedder) bound to `model`."""
+
+    def extractor(text: str) -> list[ExtractedItem]:
+        prompt = (
+            "Extract atomic knowledge notes from the text below. Each note is "
+            "an entity (a thing/person/concept) or a procedure (a how-to), with "
+            "a short title, a 1-3 sentence body, and links (titles of related "
+            "notes). Extract the durable knowledge, do not summarize the page.\n\n"
+            + text
+        )
+        return _create(model, _Extraction, prompt).items
+
+    def judge(a: Note, b: Note) -> bool:
+        prompt = (
+            f"Note A — {a.title}: {a.body}\n\nNote B — {b.title}: {b.body}\n\n"
+            "Do A and B describe the SAME real-world entity?"
+        )
+        return _create(model, _SameEntity, prompt).same
+
+    def merger(notes: list[Note]) -> MergedNote:
+        joined = "\n\n---\n\n".join(f"{n.title}: {n.body}" for n in notes)
+        prompt = (
+            "Fuse these notes about the same entity into ONE canonical note. "
+            "Return a single clear title and a merged body without duplication:"
+            f"\n\n{joined}"
+        )
+        return _create(model, MergedNote, prompt)
+
+    def gate(note: Note, level: Settlement) -> bool:
+        prompt = (
+            f"Note {note.title}: {note.body}\nIt has {len(set(note.sources))} "
+            f"corroborating sources. Coherent/complete enough to be '{level.value}'?"
+        )
+        return _create(model, _Approve, prompt).approve
+
+    return extractor, judge, merger, gate, _hash_embedder
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Never-ending learner demo on LETO + lovelaice.")
     p.add_argument("topic", help="the topic to learn about")
