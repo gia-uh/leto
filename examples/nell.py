@@ -123,6 +123,48 @@ def make_deps(model: str):
     return extractor, judge, merger, gate, _hash_embedder
 
 
+from leto import Engine, NoteStore  # noqa: E402
+
+
+def build_engine(vault: Path, model: str) -> tuple[Engine, NoteStore]:
+    store = NoteStore(folder=vault / "notes", db_path=vault / "leto.db")
+    extractor, judge, merger, gate, embedder = make_deps(model)
+    engine = Engine(store, extractor, embedder, judge=judge, merger=merger, gate=gate)
+    return engine, store
+
+
+def _format_blob(blob) -> str:
+    lines = []
+    for r in blob.facts + blob.procedures:
+        lines.append(f"- [{r.note.settlement.value}] {r.note.title} "
+                     f"(sources: {len(set(r.note.sources))})")
+    return "\n".join(lines) or "(nothing known yet)"
+
+
+def make_leto_tools(engine: Engine, state: dict):
+    async def leto_recall(query: str) -> str:
+        """Recall what the knowledge base already knows about `query`: known
+        notes with their settlement level and source count. Call this FIRST
+        each cycle to see what you know and pick a gap."""
+        blob = await asyncio.to_thread(engine.recall, query)
+        return _format_blob(blob)
+
+    async def leto_ingest(text: str, source: str) -> str:
+        """Extract and store atomic notes from page `text`. `source` is the
+        page URL (its provenance). Call on each useful page you fetch."""
+        notes = await asyncio.to_thread(engine.ingest, text, source)
+        return f"ingested {len(notes)} notes: " + ", ".join(n.slug for n in notes)
+
+    async def leto_settle() -> str:
+        """Consolidate: merge duplicate entities and mature well-sourced notes.
+        Call ONCE at the end of a cycle, after ingesting."""
+        report = await asyncio.to_thread(engine.settle)
+        state["last_report"] = report
+        return f"merged {len(report.merged)} clusters, promoted {len(report.promoted)} notes"
+
+    return leto_recall, leto_ingest, leto_settle
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Never-ending learner demo on LETO + lovelaice.")
     p.add_argument("topic", help="the topic to learn about")
