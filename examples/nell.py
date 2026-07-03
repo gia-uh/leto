@@ -6,14 +6,17 @@ Given a TOPIC, runs a lovelaice ReAct agent in a loop to build a small
 only memory is the LETO vault. This demonstrates that LETO does the work,
 not the agent's cleverness or its own memory.
 
+LETO is async-native, so the whole run lives on ONE event loop: the store,
+the agent, and the LLM-backed deps all share it — no bridges, no per-call
+client churn.
+
 Run (in an env with `leto`, `lovelaice`, `lingo-ai`, `ddgs` installed):
 
     export OPENROUTER_API_KEY=sk-...
-    python nell.py "History of the Enigma machine" --model openai/gpt-4o --cycles 4
+    python nell.py "History of the Enigma machine" --model anthropic/claude-haiku-4.5 --cycles 4
 
-The chat model is any OpenRouter slug (--model or NELL_MODEL). Embeddings
-are computed locally (no embeddings provider needed). Web search uses
-DuckDuckGo (keyless).
+The chat model is any OpenRouter slug (--model or NELL_MODEL). Embeddings are
+computed locally (no embeddings provider needed). Web search uses DuckDuckGo.
 """
 from __future__ import annotations
 
@@ -27,36 +30,36 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
-from lingo import LLM
+from lingo import LLM, Context, Engine as LingoEngine, tool as as_tool
+from pydantic import BaseModel
+
+from leto import Engine, ExtractedItem, MergedNote, Note, NoteStore, SettleReport, Settlement
+from ddgs import DDGS
+from lovelaice.tools.web import fetch                      # reused lovelaice tool
+from lovelaice.agent.agent import Agent, AgentConfig
+from lovelaice.agent.loops import ReActNative
+from lovelaice.agent.tools import AgentTool
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+EMB_DIM = 256
 
 
-def make_llm(model: str, on_token=None) -> LLM:
-    """A lingo.LLM pointed at OpenRouter. A fresh instance is built per use
-    so no client is reused across event loops."""
+def make_llm(model: str) -> LLM:
     return LLM(
         model=model,
         api_key=os.getenv("OPENROUTER_API_KEY") or os.getenv("API_KEY"),
         base_url=OPENROUTER_BASE_URL,
-        on_token=on_token,
     )
 
 
-from lingo import Context, Engine as LingoEngine, tool as as_tool  # noqa: E402
-from leto import ExtractedItem, MergedNote, Note, Settlement  # noqa: E402
-from pydantic import BaseModel  # noqa: E402
+# --- LETO's injected deps (async) -----------------------------------------
 
-EMB_DIM = 256
-
-
-def _hash_embedder(text: str) -> list[float]:
+async def _hash_embedder(text: str) -> list[float]:
     """Deterministic, keyless bag-of-tokens embedding. A stand-in for a real
     embedding model — swap in `lingo.Embedder` if you have an embeddings API."""
     vec = [0.0] * EMB_DIM
     for tok in re.findall(r"[a-z0-9]+", text.lower()):
-        idx = int(hashlib.md5(tok.encode()).hexdigest(), 16) % EMB_DIM
-        vec[idx] += 1.0
+        vec[int(hashlib.md5(tok.encode()).hexdigest(), 16) % EMB_DIM] += 1.0
     return vec
 
 
@@ -77,24 +80,15 @@ class _Approve(BaseModel):
     approve: bool
 
 
-# `from __future__ import annotations` makes `list[ExtractedItem]` a forward ref;
-# resolve it now (ExtractedItem is imported above) so structured output works.
-_Extraction.model_rebuild()
-
-
-def _create(model: str, out_model: type[BaseModel], prompt: str) -> BaseModel:
-    """One structured LLM pass with a FRESH client. Worker-thread only
-    (called via asyncio.to_thread from tools) — never on the agent's loop."""
-    async def _go():
-        return await LingoEngine(make_llm(model)).create(Context([]), out_model, prompt)
-    return asyncio.run(_go())
+_Extraction.model_rebuild()  # resolve list[ExtractedItem] forward ref
 
 
 def make_deps(model: str):
-    """Build LETO's injected dependencies (extractor, judge, merger, gate,
-    embedder) bound to `model`."""
+    """Build LETO's async deps (extractor, judge, merger, gate, embedder),
+    all sharing one lingo Engine on the caller's event loop."""
+    lengine = LingoEngine(make_llm(model))
 
-    def extractor(text: str) -> list[ExtractedItem]:
+    async def extractor(text: str) -> list[ExtractedItem]:
         prompt = (
             "Extract atomic knowledge notes from the text below. Each note is "
             "an entity (a thing/person/concept) or a procedure (a how-to), with "
@@ -102,9 +96,9 @@ def make_deps(model: str):
             "notes). Extract the durable knowledge, do not summarize the page.\n\n"
             + text
         )
-        return _create(model, _Extraction, prompt).items
+        return (await lengine.create(Context([]), _Extraction, prompt)).items
 
-    def judge(a: Note, b: Note) -> bool:
+    async def judge(a: Note, b: Note) -> bool:
         prompt = (
             "You are deduplicating a knowledge base. Decide if the two notes are "
             "the SAME real-world entity — the same specific person, place, "
@@ -122,42 +116,41 @@ def make_deps(model: str):
             f"Note A — {a.title}: {a.body}\n\nNote B — {b.title}: {b.body}\n\n"
             "Give a one-sentence reason, then decide."
         )
-        return _create(model, _SameEntity, prompt).same
+        return (await lengine.create(Context([]), _SameEntity, prompt)).same
 
-    def merger(notes: list[Note]) -> MergedNote:
+    async def merger(notes: list[Note]) -> MergedNote:
         joined = "\n\n---\n\n".join(f"{n.title}: {n.body}" for n in notes)
         prompt = (
             "Fuse these notes about the same entity into ONE canonical note. "
             "Return a single clear title and a merged body without duplication:"
             f"\n\n{joined}"
         )
-        return _create(model, MergedNote, prompt)
+        return await lengine.create(Context([]), MergedNote, prompt)
 
-    def gate(note: Note, level: Settlement) -> bool:
+    async def gate(note: Note, level: Settlement) -> bool:
         prompt = (
             f"Note {note.title}: {note.body}\nIt has {len(set(note.sources))} "
             f"corroborating sources. Coherent/complete enough to be '{level.value}'?"
         )
-        return _create(model, _Approve, prompt).approve
+        return (await lengine.create(Context([]), _Approve, prompt)).approve
 
     return extractor, judge, merger, gate, _hash_embedder
 
 
-from leto import Engine, NoteStore  # noqa: E402
-
-
-def build_engine(vault: Path, model: str) -> tuple[Engine, NoteStore]:
-    store = NoteStore(folder=vault / "notes", db_path=vault / "leto.db")
+async def build_engine(vault: Path, model: str) -> tuple[Engine, NoteStore]:
+    store = await NoteStore.open(folder=vault / "notes", db_path=vault / "leto.db")
     extractor, judge, merger, gate, embedder = make_deps(model)
     engine = Engine(store, extractor, embedder, judge=judge, merger=merger, gate=gate)
     return engine, store
 
 
+# --- tools the agent sees --------------------------------------------------
+
 def _format_blob(blob) -> str:
-    lines = []
-    for r in blob.facts + blob.procedures:
-        lines.append(f"- [{r.note.settlement.value}] {r.note.title} "
-                     f"(sources: {len(set(r.note.sources))})")
+    lines = [
+        f"- [{r.note.settlement.value}] {r.note.title} (sources: {len(set(r.note.sources))})"
+        for r in blob.facts + blob.procedures
+    ]
     return "\n".join(lines) or "(nothing known yet)"
 
 
@@ -166,31 +159,22 @@ def make_leto_tools(engine: Engine, state: dict):
         """Recall what the knowledge base already knows about `query`: known
         notes with their settlement level and source count. Call this FIRST
         each cycle to see what you know and pick a gap."""
-        blob = await asyncio.to_thread(engine.recall, query)
-        return _format_blob(blob)
+        return _format_blob(await engine.recall(query))
 
     async def leto_ingest(text: str, source: str) -> str:
         """Extract and store atomic notes from page `text`. `source` is the
         page URL (its provenance). Call on each useful page you fetch."""
-        notes = await asyncio.to_thread(engine.ingest, text, source)
+        notes = await engine.ingest(text, source)
         return f"ingested {len(notes)} notes: " + ", ".join(n.slug for n in notes)
 
     async def leto_settle() -> str:
         """Consolidate: merge duplicate entities and mature well-sourced notes.
         Call ONCE at the end of a cycle, after ingesting."""
-        report = await asyncio.to_thread(engine.settle)
+        report = await engine.settle()
         state["last_report"] = report
         return f"merged {len(report.merged)} clusters, promoted {len(report.promoted)} notes"
 
     return leto_recall, leto_ingest, leto_settle
-
-
-from ddgs import DDGS  # noqa: E402
-from lovelaice.tools.web import fetch  # noqa: E402  (reused lovelaice tool)
-from lovelaice.agent.agent import Agent, AgentConfig  # noqa: E402
-from lovelaice.agent.loops import ReActNative  # noqa: E402  (the native tool-call loop)
-from lovelaice.agent.tools import AgentTool  # noqa: E402
-from leto import SettleReport  # noqa: E402
 
 
 async def web_search(query: str) -> str:
@@ -198,7 +182,7 @@ async def web_search(query: str) -> str:
     `title — url — snippet`. Use to find pages about a gap, then `fetch` a URL."""
     def _search():
         return DDGS().text(query, max_results=5)
-    results = await asyncio.to_thread(_search)
+    results = await asyncio.to_thread(_search)   # ddgs is blocking; offload it
     return "\n".join(f"{r['title']} — {r['href']} — {r['body']}"
                      for r in results) or "no results"
 
@@ -219,32 +203,33 @@ CYCLE_PROMPT = (
 )
 
 
-def build_tools(engine: Engine, state: dict) -> list[AgentTool]:
+def build_agent(engine: Engine, model: str, state: dict, session_path: Path) -> Agent:
+    """A fresh lovelaice native-ReAct agent. State lives only in the LETO vault,
+    so each cycle gets a fresh session."""
     leto_recall, leto_ingest, leto_settle = make_leto_tools(engine, state)
-    return [
+    tools = [
         AgentTool(inner=as_tool(leto_recall), kind="read"),
         AgentTool(inner=as_tool(leto_ingest), kind="edit"),
         AgentTool(inner=as_tool(leto_settle), kind="other"),
         AgentTool(inner=as_tool(web_search), kind="search"),
         AgentTool(inner=as_tool(fetch), kind="fetch"),
     ]
-
-
-def build_agent(engine: Engine, model: str, state: dict, session_path: Path) -> Agent:
-    """A fresh lovelaice native-ReAct agent. `max_tokens` is capped because
-    Anthropic-via-OpenRouter defaults to a huge budget that can exceed credit
-    caps. State lives only in the LETO vault, so each cycle gets a fresh session."""
     config = AgentConfig(
-        model=model,
-        system_prompt=SYSTEM_PROMPT,
+        model=model, system_prompt=SYSTEM_PROMPT,
         api_key=os.getenv("OPENROUTER_API_KEY") or os.getenv("API_KEY"),
-        base_url=OPENROUTER_BASE_URL,
-        max_tokens=4096,
+        base_url=OPENROUTER_BASE_URL, max_tokens=4096,
     )
-    agent = Agent(config=config, tools=build_tools(engine, state),
-                  loop=ReActNative(), session_path=session_path)
+    agent = Agent(config=config, tools=tools, loop=ReActNative(),
+                  session_path=session_path)
     agent.on("tool_execution_start", lambda ev: print(f"  · {ev.name}", flush=True))
     return agent
+
+
+def _final_answer(agent: Agent) -> str:
+    for m in reversed(agent.messages_for_llm()):
+        if m.role == "assistant" and str(getattr(m, "content", "") or "").strip():
+            return str(m.content)
+    return ""
 
 
 def format_cycle_report(cycle: int, notes: list[Note], report: SettleReport) -> str:
@@ -264,11 +249,28 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def _final_answer(agent: Agent) -> str:
-    for m in reversed(agent.messages_for_llm()):
-        if m.role == "assistant" and str(getattr(m, "content", "") or "").strip():
-            return str(m.content)
-    return ""
+async def run(topic: str, model: str, cycles: int, vault: Path) -> None:
+    (vault / "sessions").mkdir(parents=True, exist_ok=True)
+    engine, store = await build_engine(vault, model)
+    print(f"topic: {topic!r} · model: {model} · vault: {vault}")
+    try:
+        for cycle in range(1, cycles + 1):
+            print(f"\n=== cycle {cycle}/{cycles} ===", flush=True)
+            state: dict = {}
+            agent = build_agent(engine, model, state, vault / "sessions" / f"c{cycle}.json")
+            try:
+                await agent.prompt(CYCLE_PROMPT.format(topic=topic))
+                print("\n" + _final_answer(agent))
+            except Exception as e:               # a cycle may fail; keep going
+                print(f"  cycle error: {type(e).__name__}: {e}", flush=True)
+            notes = await store.all_notes()
+            print(format_cycle_report(cycle, notes, state.get("last_report") or SettleReport()))
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        print("\ninterrupted — stopping.")
+    finally:
+        print("\n=== final recall ===")
+        print(_format_blob(await engine.recall(topic)))
+        await store.close()
 
 
 def main() -> None:
@@ -278,33 +280,8 @@ def main() -> None:
         sys.exit("error: set --model <openrouter-slug> or NELL_MODEL")
     if not (os.getenv("OPENROUTER_API_KEY") or os.getenv("API_KEY")):
         sys.exit("error: set OPENROUTER_API_KEY")
-
     vault = Path(args.vault or f".nell-{datetime.now():%Y%m%d-%H%M%S}")
-    (vault / "sessions").mkdir(parents=True, exist_ok=True)
-    engine, store = build_engine(vault, model)
-    print(f"topic: {args.topic!r} · model: {model} · vault: {vault}")
-
-    try:
-        for cycle in range(1, args.cycles + 1):
-            print(f"\n=== cycle {cycle}/{args.cycles} ===", flush=True)
-            state: dict = {}
-            # Fresh agent + fresh session each cycle: the agent's only cross-cycle
-            # memory is the LETO vault (engine/store persist).
-            agent = build_agent(engine, model, state,
-                                vault / "sessions" / f"c{cycle}.json")
-            try:
-                asyncio.run(agent.prompt(CYCLE_PROMPT.format(topic=args.topic)))
-                print("\n" + _final_answer(agent))
-            except Exception as e:                       # a cycle may fail; keep going
-                print(f"  cycle error: {type(e).__name__}: {e}", flush=True)
-            notes = store.all_notes()
-            print(format_cycle_report(cycle, notes, state.get("last_report") or SettleReport()))
-    except KeyboardInterrupt:
-        print("\ninterrupted — stopping.")
-    finally:
-        print("\n=== final recall ===")
-        print(_format_blob(engine.recall(args.topic)))
-        store.close()
+    asyncio.run(run(args.topic, model, args.cycles, vault))
 
 
 if __name__ == "__main__":
