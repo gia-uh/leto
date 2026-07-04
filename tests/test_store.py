@@ -109,3 +109,20 @@ async def test_epistemic_superseded_respects_transaction_time(store):
     assert await store.epistemic_state("old", at="2026-05-01") == EpistemicState.ACTIVE
     assert await store.epistemic_state("old", at="2026-07-01") == EpistemicState.SUPERSEDED
     assert await store.epistemic_state("new", at="2026-07-01") == EpistemicState.ACTIVE
+
+
+async def test_as_of_reconstructs_known_and_valid(store):
+    n = _fact("x", "X")
+    n.valid_from, n.valid_to, n.recorded_at = "2019-01-01", "2021-01-01", "2019-06-01"
+    await store.put(n)
+    assert "x" in [m.slug for m in await store.as_of("2020-01-01")]
+    assert "x" not in [m.slug for m in await store.as_of("2018-01-01")]
+    assert "x" not in [m.slug for m in await store.as_of("2022-01-01")]
+
+
+async def test_active_notes_excludes_superseded(store):
+    await store.put(_fact("old", "Old"))
+    await store.put(_fact("new", "New"))
+    await store.link("new", "old", EdgeType.SUPERSEDES)
+    slugs = [m.slug for m in await store.active_notes()]
+    assert "new" in slugs and "old" not in slugs

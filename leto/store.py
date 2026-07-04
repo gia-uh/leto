@@ -156,5 +156,25 @@ class NoteStore:
             return EpistemicState.RETRACTED
         return EpistemicState.ACTIVE
 
+    async def as_of(self, at: str) -> list[Note]:
+        """Notes LETO both knew (recorded_at <= at) and that were valid
+        (valid_from <= at < valid_to) at `at` — the belief state at that time."""
+        out: list[Note] = []
+        for note in await self.all_notes():
+            known = (note.recorded_at or "") <= at
+            started = (note.valid_from or "") <= at
+            ended = note.valid_to is not None and note.valid_to <= at
+            if known and started and not ended:
+                out.append(note)
+        return out
+
+    async def active_notes(self, at: str | None = None) -> list[Note]:
+        at = at or NOW()
+        out: list[Note] = []
+        for note in await self.all_notes():
+            if await self.epistemic_state(note.slug, at) == EpistemicState.ACTIVE:
+                out.append(note)
+        return out
+
     async def close(self) -> None:
         await self._db.close()
