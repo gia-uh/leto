@@ -22,6 +22,12 @@ class Settlement(str, Enum):
     PERMANENT = "permanent"
 
 
+class EpistemicState(str, Enum):
+    ACTIVE = "active"
+    SUPERSEDED = "superseded"
+    RETRACTED = "retracted"
+
+
 class Outcome(str, Enum):
     WORKED = "worked"
     FAILED = "failed"

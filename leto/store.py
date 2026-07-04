@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from leto.markdown import note_from_markdown, note_to_markdown
 from leto.model import (
-    Edge, EdgeType, Note, ORDERED_EDGES, edge_allowed, retrieval_key,
+    Edge, EdgeType, EpistemicState, Note, ORDERED_EDGES, edge_allowed, retrieval_key,
 )
 
 
@@ -141,6 +141,20 @@ class NoteStore:
                     if note is not None:
                         out.append(note)
         return out
+
+    async def epistemic_state(self, slug: str, at: str | None = None) -> EpistemicState:
+        at = at or NOW()
+        note = await self.get(slug)
+        if note is None:
+            raise ValueError(f"note {slug!r} does not exist")
+        # superseded: a superseding note (incoming supersedes edge) known by `at`
+        for src in await self.backlinks(slug, EdgeType.SUPERSEDES):
+            if (src.recorded_at or "") <= at:
+                return EpistemicState.SUPERSEDED
+        # retracted: its validity ended on/before `at`
+        if note.valid_to is not None and note.valid_to <= at:
+            return EpistemicState.RETRACTED
+        return EpistemicState.ACTIVE
 
     async def close(self) -> None:
         await self._db.close()

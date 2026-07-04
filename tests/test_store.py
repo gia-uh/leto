@@ -82,3 +82,30 @@ async def test_link_rejects_missing_endpoint_and_self(store):
         await store.link("do-cs", "ghost", EdgeType.DEPENDS_ON)  # missing target
     with pytest.raises(ValueError):
         await store.link("do-cs", "do-cs", EdgeType.DEPENDS_ON)  # self
+
+
+from leto.model import EpistemicState
+
+
+async def test_epistemic_active_by_default(store):
+    await store.put(_fact("a", "A"))
+    assert await store.epistemic_state("a") == EpistemicState.ACTIVE
+
+
+async def test_epistemic_retracted_when_valid_to_past(store):
+    n = _fact("a", "A")
+    n.valid_to = "2020-01-01"
+    await store.put(n)
+    assert await store.epistemic_state("a", at="2026-01-01") == EpistemicState.RETRACTED
+    assert await store.epistemic_state("a", at="2019-01-01") == EpistemicState.ACTIVE
+
+
+async def test_epistemic_superseded_respects_transaction_time(store):
+    await store.put(_fact("old", "Old"))
+    new = _fact("new", "New")
+    new.recorded_at = "2026-06-01"
+    await store.put(new)
+    await store.link("new", "old", EdgeType.SUPERSEDES)   # new supersedes old
+    assert await store.epistemic_state("old", at="2026-05-01") == EpistemicState.ACTIVE
+    assert await store.epistemic_state("old", at="2026-07-01") == EpistemicState.SUPERSEDED
+    assert await store.epistemic_state("new", at="2026-07-01") == EpistemicState.ACTIVE
