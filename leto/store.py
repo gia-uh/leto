@@ -73,5 +73,24 @@ class NoteStore:
                 out.append(note)
         return out
 
+    async def match(self, query: str, top_k: int = 5) -> list[tuple[Note, float]]:
+        results = await self._docs.search(query, on=["key"])
+        out: list[tuple[Note, float]] = []
+        for scored in results[:top_k]:
+            note = await self.get(scored.document.body.slug)
+            if note is not None:
+                out.append((note, scored.score))
+        return out
+
+    async def search_vector(
+        self, vector: list[float], top_k: int = 5
+    ) -> list[tuple[Note, float]]:
+        out: list[tuple[Note, float]] = []
+        for item in await self._vectors.near(vector, k=top_k):
+            note = await self.get(item.id)
+            if note is not None:
+                out.append((note, item.score))
+        return out
+
     async def close(self) -> None:
         await self._db.close()

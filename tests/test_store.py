@@ -34,3 +34,18 @@ async def test_all_notes_sorted(store):
     await store.put(_fact("water", "Water"))
     await store.put(_fact("alan-turing", "Alan Turing"))
     assert [n.slug for n in await store.all_notes()] == ["alan-turing", "water"]
+
+
+async def test_match_finds_by_retrieval_key(store):
+    await store.put(_fact("alan-turing", "Alan Turing", "a mathematician"))
+    await store.put(_fact("water", "Water", "a liquid"))
+    hits = await store.match("mathematician", top_k=5)
+    slugs = [n.slug for n, _ in hits]
+    assert "alan-turing" in slugs and "water" not in slugs
+
+
+async def test_search_vector_ranks_by_nearness(store):
+    await store.put(_fact("a", "A", "x"), embedding=[1.0, 0.0, 0.0])
+    await store.put(_fact("b", "B", "y"), embedding=[0.0, 1.0, 0.0])
+    hits = await store.search_vector([0.9, 0.1, 0.0], top_k=2)
+    assert hits[0][0].slug == "a"
