@@ -49,3 +49,36 @@ async def test_search_vector_ranks_by_nearness(store):
     await store.put(_fact("b", "B", "y"), embedding=[0.0, 1.0, 0.0])
     hits = await store.search_vector([0.9, 0.1, 0.0], top_k=2)
     assert hits[0][0].slug == "a"
+
+
+from leto.model import EdgeType, ProcedurePayload
+
+
+def _proc(slug, title, goal=""):
+    return Note(slug=slug, kind=Kind.PROCEDURE, title=title,
+                payload=ProcedurePayload(goal=goal))
+
+
+async def test_link_persists_and_neighbors_backlinks(store):
+    await store.put(_fact("cs", "Computer Science", "study of computation"))
+    await store.put(_proc("do-cs", "Do CS", "compute"))
+    await store.link("do-cs", "cs", EdgeType.INVOLVES)          # procedure -> fact
+    assert [n.slug for n in await store.neighbors("do-cs")] == ["cs"]
+    assert [n.slug for n in await store.backlinks("cs")] == ["do-cs"]
+    again = await store.get("do-cs")
+    assert again.edges and again.edges[0].target == "cs"
+
+
+async def test_link_rejects_up_edge(store):
+    await store.put(_fact("cs", "Computer Science"))
+    await store.put(_proc("do-cs", "Do CS"))
+    with pytest.raises(ValueError):
+        await store.link("cs", "do-cs", EdgeType.INVOLVES)      # fact -> procedure (up)
+
+
+async def test_link_rejects_missing_endpoint_and_self(store):
+    await store.put(_proc("do-cs", "Do CS"))
+    with pytest.raises(ValueError):
+        await store.link("do-cs", "ghost", EdgeType.DEPENDS_ON)  # missing target
+    with pytest.raises(ValueError):
+        await store.link("do-cs", "do-cs", EdgeType.DEPENDS_ON)  # self

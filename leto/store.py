@@ -92,5 +92,55 @@ class NoteStore:
                 out.append((note, item.score))
         return out
 
+    async def link(self, source_slug: str, target_slug: str, type: EdgeType,
+                   order: int | None = None) -> None:
+        if source_slug == target_slug:
+            raise ValueError(f"self-edge not allowed on {source_slug!r}")
+        source = await self.get(source_slug)
+        target = await self.get(target_slug)
+        if source is None:
+            raise ValueError(f"source note {source_slug!r} does not exist")
+        if target is None:
+            raise ValueError(
+                f"target note {target_slug!r} does not exist — create it first "
+                f"(leto remember ...)")
+        if not edge_allowed(source.kind, type, target.kind):
+            raise ValueError(
+                f"edge {source.kind.value} -{type.value}-> {target.kind.value} "
+                f"is not allowed (check direction/ontology)")
+        if type not in ORDERED_EDGES:
+            order = None
+        if not any(e.target == target.slug and e.type == type for e in source.edges):
+            source.edges.append(Edge(target=target.slug, type=type, order=order))
+            await self.put(source)
+        await self._graph.link(source.slug, target.slug, label=type.value,
+                               metadata={"order": order})
+
+    async def neighbors(self, slug: str, type: EdgeType | None = None) -> list[Note]:
+        labels = [type.value] if type else [t.value for t in EdgeType]
+        seen: set[str] = set()
+        out: list[Note] = []
+        for label in labels:
+            async for target in self._graph.children(slug, label=label):
+                if target not in seen:
+                    seen.add(target)
+                    note = await self.get(target)
+                    if note is not None:
+                        out.append(note)
+        return out
+
+    async def backlinks(self, slug: str, type: EdgeType | None = None) -> list[Note]:
+        labels = [type.value] if type else [t.value for t in EdgeType]
+        seen: set[str] = set()
+        out: list[Note] = []
+        for label in labels:
+            async for source in self._graph.parents(slug, label=label):
+                if source not in seen:
+                    seen.add(source)
+                    note = await self.get(source)
+                    if note is not None:
+                        out.append(note)
+        return out
+
     async def close(self) -> None:
         await self._db.close()
