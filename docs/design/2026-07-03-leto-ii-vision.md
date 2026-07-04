@@ -1,5 +1,10 @@
 # LETO II — Vision & Architecture (grounding)
 
+> **SUPERSEDED (2026-07-04)** by `2026-07-04-leto-substrate-vision.md`, which
+> pivots LETO to a **zero-LLM, agent-driven substrate** (all linguistic
+> inference moves to the consuming agent; the injected `extractor/judge/merger/
+> gate` callables are removed). Kept for the record.
+
 **Status:** grounding design — the north star for the LETO rewrite.
 **Date:** 2026-07-03
 **Supersedes:** the 2019 RANLP prototype (`Demo Application for LETO`) and the
