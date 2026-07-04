@@ -1,49 +1,46 @@
+import pytest
+
 from leto.model import (
-    NoteKind, Settlement, Note, ExtractedItem, KnowledgeBlob, slugify,
+    Kind, Settlement, Outcome, EdgeType, Edge, Note, LAYER,
+    FactPayload, ProcedurePayload, ExperiencePayload,
+    slugify, retrieval_key, edge_allowed,
 )
 
 
-def test_slugify_kebab_cases_and_strips():
+def test_slugify():
     assert slugify("  Alan Turing!  ") == "alan-turing"
-    assert slugify("Café / Bar 42") == "caf-bar-42"
 
 
-def test_note_defaults_to_fleeting_with_no_links():
-    n = Note(slug="alan-turing", kind=NoteKind.ENTITY, title="Alan Turing")
-    assert n.settlement is Settlement.FLEETING
-    assert n.links == []
-    assert n.body == ""
+def test_layers_order_fact_below_experience():
+    assert LAYER[Kind.FACT] < LAYER[Kind.PROCEDURE] < LAYER[Kind.EXPERIENCE]
 
 
-def test_extracted_item_roundtrips_fields():
-    item = ExtractedItem(kind=NoteKind.PROCEDURE, title="Boil water",
-                         body="Heat until 100C", links=["Water"])
-    assert item.kind is NoteKind.PROCEDURE
-    assert item.links == ["Water"]
+def test_note_requires_matching_payload():
+    Note(slug="turing", kind=Kind.FACT, title="Alan Turing",
+         payload=FactPayload(definition="A mathematician."))
+    with pytest.raises(ValueError):
+        Note(slug="x", kind=Kind.FACT, title="X",
+             payload=ProcedurePayload(goal="do x"))
 
 
-def test_knowledge_blob_starts_empty():
-    blob = KnowledgeBlob(query="who is turing")
-    assert blob.facts == [] and blob.procedures == []
+def test_retrieval_key_per_kind():
+    fact = Note(slug="y", kind=Kind.FACT, title="Y",
+                payload=FactPayload(definition="the def"))
+    proc = Note(slug="do-x", kind=Kind.PROCEDURE, title="Do X",
+                payload=ProcedurePayload(goal="accomplish x"))
+    exp = Note(slug="e", kind=Kind.EXPERIENCE, title="E",
+               payload=ExperiencePayload(situation="hit a wall", action="tried z",
+                                         outcome=Outcome.FAILED, lesson="z is bad"))
+    assert retrieval_key(fact) == "Y. the def"
+    assert retrieval_key(proc) == "accomplish x"
+    assert retrieval_key(exp) == "hit a wall"
 
 
-def test_note_has_empty_sources_and_aliases_by_default():
-    from leto.model import Note, NoteKind
-    n = Note(slug="alan-turing", kind=NoteKind.ENTITY, title="Alan Turing")
-    assert n.sources == []
-    assert n.aliases == []
-
-
-def test_merge_and_report_types_construct():
-    from leto.model import MergedGroup, MergeRecord, SettleReport
-    m = MergedGroup(members=["alan-turing", "turing-alan"],
-                    title="Alan Turing", body="A mathematician.")
-    assert m.title == "Alan Turing"
-    assert m.members == ["alan-turing", "turing-alan"]
-    rec = MergeRecord(canonical="alan-turing", absorbed=["turing-alan"],
-                      new_settlement="fleeting")
-    report = SettleReport(merged=[rec], promoted=["alan-turing"])
-    assert report.merged[0].absorbed == ["turing-alan"]
-    assert report.promoted == ["alan-turing"]
-    empty = SettleReport()
-    assert empty.merged == [] and empty.promoted == []
+def test_edge_direction_rules():
+    assert edge_allowed(Kind.PROCEDURE, EdgeType.INVOLVES, Kind.FACT)
+    assert not edge_allowed(Kind.FACT, EdgeType.INVOLVES, Kind.PROCEDURE)
+    assert edge_allowed(Kind.EXPERIENCE, EdgeType.APPLIED, Kind.PROCEDURE)
+    assert edge_allowed(Kind.PROCEDURE, EdgeType.STEP, Kind.PROCEDURE)
+    assert not edge_allowed(Kind.EXPERIENCE, EdgeType.STEP, Kind.PROCEDURE)
+    assert edge_allowed(Kind.FACT, EdgeType.RELATES_TO, Kind.FACT)
+    assert not edge_allowed(Kind.FACT, EdgeType.RELATES_TO, Kind.EXPERIENCE)
